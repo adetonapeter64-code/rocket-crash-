@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crash Admin</title>
+<style>
+:root{--bg:#020008;--panel:#0b0320;--line:#5c20a0;--green:#19e96f;--red:#ff304f;--gold:#ffd02d;--muted:#a7a0c5;--text:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#020008;--panel:#0b0320;--text:#fff}}
+:root[data-theme="dark"]{--bg:#020008;--panel:#0b0320;--text:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 50% 0,#180040 0,#080019 45%,var(--bg) 100%);color:var(--text);font-family:Arial,Helvetica,sans-serif;min-height:100vh}
+.wrap{max-width:720px;margin:auto;padding:12px}
+h1{font-size:22px;margin:6px 0 12px}h1 span{color:#ffb000}
+.card{border:1px solid var(--line);border-radius:16px;background:rgba(8,0,24,.85);padding:12px 14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.stat b{display:block;font-size:26px;color:var(--gold)}.stat small{color:var(--muted)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#555;margin-right:6px}.dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+input,button{font:inherit}
+input{width:100%;padding:12px;background:#05000e;color:#fff;border:1px solid #542184;border-radius:10px;outline:0;font-size:16px}
+button{cursor:pointer;background:#9d36ff;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:900}
+.list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.p{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center}
+.av{width:44px;height:44px;border-radius:50%;background:#ffb900;color:#2a1600;display:grid;place-items:center;font-weight:900;font-size:20px}
+.p b{font-size:16px}.p small{color:var(--muted);display:block;font-size:12px;line-height:1.5}
+.p .num{text-align:right;font-size:13px}.p .num strong{display:block;font-size:17px;color:var(--gold)}
+.win{color:var(--green)}.lose{color:var(--red)}
+.p button{margin-top:6px;padding:6px 10px;font-size:12px;background:#26104d;border:1px solid #4d1d82}
+#gate{max-width:380px;margin:18vh auto 0;text-align:center}#gate input{margin:12px 0}#err{color:#ff6b8a;min-height:20px;font-size:13px}
+.note{color:var(--muted);font-size:12px;margin:12px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="gate" class="card"><h1>🛠 Crash <span>Admin</span></h1><input id="key" type="password" placeholder="Admin key" autocomplete="current-password"><button id="enter" style="width:100%">OPEN</button><div id="err"></div></div>
+
+  <div id="main" hidden>
+    <h1>🛠 Crash <span>Admin</span></h1>
+    <div class="grid">
+      <div class="card stat"><b id="online">0</b><small>Online now</small></div>
+      <div class="card stat"><b id="total">0</b><small>Total players</small></div>
+      <div class="card stat"><b id="bets">0</b><small>Bets this round</small></div>
+      <div class="card stat"><b id="phase">—</b><small id="rid">Round</small></div>
+    </div>
+    <input id="q" placeholder="Search name, ID or Telegram @username">
+    <div class="list" id="list"></div>
+    <p class="note">Each player has a permanent ID shown under their name. Telegram details appear only when the game is opened inside your verified Telegram mini app. This panel cannot see or change any crash result.</p>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const fmt=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
+let key=null,data=null,timer=null;
+try{key=localStorage.getItem('adminKey')}catch(e){}
+
+async function call(path,body){
+  const r=await fetch('/admin/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({key},body||{}))});
+  return r.json();
+}
+function ago(t){if(!t)return 'never';const s=Math.max(0,Math.round((Date.now()-t)/1000));return s<60?s+'s ago':s<3600?Math.round(s/60)+' min ago':s<86400?Math.round(s/3600)+' h ago':Math.round(s/86400)+' d ago'}
+function render(){
+  if(!data)return;
+  $('online').textContent=data.online;$('total').textContent=data.total;$('bets').textContent=data.round.bets;
+  $('phase').textContent={count:'Betting',fly:'Flying',over:'Crashed'}[data.round.phase]||'—';$('rid').textContent='Round #'+data.round.id;
+  const q=$('q').value.trim().toLowerCase();
+  const rows=data.players.filter(p=>!q||[p.name,p.id,p.tg&&p.tg.username,p.tg&&p.tg.name].join(' ').toLowerCase().includes(q))
+    .sort((a,b)=>(b.online-a.online)||(b.seen-a.seen));
+  $('list').innerHTML=rows.length?rows.map(p=>'<div class="card p"><div class="av">'+esc((p.name||'?')[0].toUpperCase())+'</div><div><b><span class="dot'+(p.online?' on':'')+'"></span>'+esc(p.name)+'</b><small>ID '+esc(p.id)+(p.tg?' · TG '+esc(p.tg.username?'@'+p.tg.username:p.tg.id)+(p.tg.name?' ('+esc(p.tg.name)+')':''):'')+'<br>'+(p.online?'Online now':'Last seen '+ago(p.seen))+' · joined '+ago(p.first)+'<br>Rounds '+p.rounds+' · wins '+p.wins+' · best '+(p.best?p.best.toFixed(2)+'x':'—')+(p.bet?'<br>Bet 🪙 '+fmt(p.bet.amt)+(p.bet.auto?' (auto '+p.bet.auto+'x)':'')+(p.bet.at?' · cashed at '+p.bet.at.toFixed(2)+'x':''):'')+'</small></div><div class="num"><strong>🪙 '+fmt(p.bal)+'</strong><span class="'+(p.pnl>=0?'win':'lose')+'">'+(p.pnl>=0?'+':'')+fmt(p.pnl)+'</span><br><button data-id="'+esc(p.id)+'">Restore</button></div></div>').join(''):'<div class="card" style="color:var(--muted)">No players match.</div>'}
+async function poll(){
+  try{const j=await call('state');if(!j.ok)throw new Error(j.error);data=j;render()}
+  catch(e){clearInterval(timer);$('main').hidden=true;$('gate').hidden=false;$('err').textContent=e.message||'Could not reach the server'}
+}
+async function open(){
+  key=$('key').value.trim()||key;
+  const j=await call('state');
+  if(!j.ok){$('err').textContent=j.error||'Wrong admin key';return}
+  try{localStorage.setItem('adminKey',key)}catch(e){}
+  $('gate').hidden=true;$('main').hidden=false;data=j;render();clearInterval(timer);timer=setInterval(poll,2000)
+}
+$('enter').onclick=open;$('key').onkeydown=e=>{if(e.key==='Enter')open()};
+$('q').oninput=render;
+$('list').onclick=async e=>{const b=e.target.closest('button');if(!b)return;b.disabled=true;await call('restore',{id:b.dataset.id});poll()};
+if(key){$('key').value=key;open()}
+</script>
+</body>
+</html>
