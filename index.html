@@ -98,6 +98,23 @@ html,body{height:100%;margin:0;overflow:hidden}
 .chips{display:flex;flex-wrap:wrap;gap:8px}.chips span{font-weight:900;font-size:14px;background:#0f0526;border:1px solid #2f1259;border-radius:10px;padding:5px 9px}
 .chips .ph{font-weight:400;color:var(--muted);background:none;border:0;padding:0}
 .conn{position:fixed;top:0;left:0;right:0;text-align:center;background:#c52b4b;color:#fff;font-size:12px;padding:calc(4px + env(safe-area-inset-top,0px)) 4px 4px;z-index:200}
+
+/* real-money wallet UI */
+.walletPanel{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.walletPanel button{background:#1a0735;color:#fff;border:1px solid #542184;border-radius:12px;padding:12px;font-weight:900}
+.walletPanel .dep{background:linear-gradient(#19e96f,#0b9f43);border-color:#37ff80}
+.walletPanel .wd{background:linear-gradient(#ffb000,#e56f00);border-color:#ffc94c}
+.moneyBox{background:#080014;border:1px solid #3a1a66;border-radius:12px;padding:12px;margin:10px 0}
+.moneyBox b{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.moneyBox strong{font-size:22px;color:var(--gold)}
+.walletTabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
+.walletTabs button{background:#1a0735;color:#aaa;border:1px solid #4d1c7e;padding:11px;border-radius:10px;font-weight:900}
+.walletTabs .active{color:#fff;background:#7d2dcc;border-color:#b96cff}
+.walletForm{display:none}.walletForm.active{display:block}
+.walletForm input,.walletForm select{width:100%;padding:13px;margin:6px 0;background:#05000e;color:#fff;border:1px solid #542184;border-radius:10px;outline:0;font-size:16px}
+.walletMsg{min-height:20px;text-align:center;color:var(--muted);font-size:12px;margin-top:8px}
+.walletNote{font-size:11px;color:var(--muted);line-height:1.4;margin-top:8px}
+
 </style>
 </head>
 <body>
@@ -106,7 +123,7 @@ html,body{height:100%;margin:0;overflow:hidden}
   <div class="card userbar">
     <div class="who"><div class="avatar" id="av">👤</div><div><b id="uname">Player</b></div></div>
     <div class="balance">🪙 <span id="bal">1000</span><small>Balance</small></div>
-    <button class="wallet" id="wallet">🎁 Bonus</button>
+    <button class="wallet" id="wallet">💳 Wallet</button>
   </div>
   <div class="view on" id="vHome">
     <div class="card hero"><img id="heroImg" alt=""><div><h2>Crash Game</h2><p>Watch the multiplier climb and cash out before the rocket crashes.</p><button class="go" id="play">🚀 PLAY NOW</button></div></div>
@@ -143,6 +160,44 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div id="login"><div class="box"><div style="font-size:42px">🚀</div><h2>Welcome</h2><p>Pick a name to start. This is a play-money game.</p><input id="loginName" maxlength="20" placeholder="Your name" autocomplete="nickname"><button class="primary" id="loginBtn">START PLAYING</button><div id="loginErr"></div></div></div>
 
 <div class="modal" id="menuM"><div class="box"><h2>Menu</h2><button class="plain" id="sfxB"></button><button class="plain" id="musB"></button><button class="plain" id="out">🔐 Log out</button><button class="plain" id="closeMenu">✕ Close</button></div></div>
+
+
+<div class="modal" id="walletM">
+  <div class="box">
+    <h2>💳 Wallet</h2>
+    <div class="moneyBox">
+      <b>AVAILABLE BALANCE</b>
+      <strong>₦ <span id="walletBal">0</span></strong>
+    </div>
+    <div class="walletPanel">
+      <button class="dep" id="openDeposit">💰 Deposit</button>
+      <button class="wd" id="openWithdraw">🏦 Withdraw</button>
+    </div>
+    <div class="walletTabs">
+      <button id="depTab" class="active">Deposit</button>
+      <button id="wdTab">Withdraw</button>
+    </div>
+
+    <div class="walletForm active" id="depositForm">
+      <input id="depAmount" type="number" min="100" step="1" inputmode="numeric" placeholder="Deposit amount (₦)">
+      <button class="primary" id="depositBtn">💰 CONTINUE TO PAYMENT</button>
+      <div class="walletNote">Payment is handled by the secure payment provider. Your game balance is credited only after the server verifies the payment.</div>
+    </div>
+
+    <div class="walletForm" id="withdrawForm">
+      <input id="wdAmount" type="number" min="100" step="1" inputmode="numeric" placeholder="Withdrawal amount (₦)">
+      <input id="wdName" maxlength="80" placeholder="Account name">
+      <input id="wdAccount" maxlength="20" inputmode="numeric" placeholder="Bank account number">
+      <input id="wdBank" maxlength="80" placeholder="Bank name">
+      <input id="wdCode" maxlength="20" inputmode="numeric" placeholder="Bank code (if required)">
+      <button class="primary" id="withdrawBtn">🏦 REQUEST WITHDRAWAL</button>
+      <div class="walletNote">Withdrawals are sent to the bank details you submit and may require admin/payment-provider processing.</div>
+    </div>
+
+    <div class="walletMsg" id="walletMsg"></div>
+    <button class="plain" id="walletClose" style="text-align:center">✕ Close</button>
+  </div>
+</div>
 
 <div class="modal" id="bonusM"><div class="box" style="text-align:center"><h2>🎁 Welcome bonus</h2><div style="font-size:40px;color:var(--gold);font-weight:900">500 🪙</div><p style="color:var(--muted);font-size:13px">Play coins. They have no cash value.</p><button class="primary" id="claim">CLAIM NOW</button><button class="plain" id="closeBonus" style="text-align:center">CLOSE</button></div></div>
 
@@ -199,7 +254,7 @@ function onSnap(d){
 }
 function render(){
   const st=me.st;
-  $('uname').textContent=me.name;$('av').textContent=me.name[0].toUpperCase();$('bal').textContent=fmt(me.bal);
+  $('uname').textContent=me.name;$('av').textContent=me.name[0].toUpperCase();$('bal').textContent=fmt(me.bal);if($('walletBal'))$('walletBal').textContent=fmt(me.bal);
   $('pnl').textContent=(me.pnl>=0?'+':'')+fmt(me.pnl);$('pnl').className=me.pnl>=0?'win':'lose';
   const hist=S.history,chip=v=>'<span class="'+cls(v)+'">'+v.toFixed(2)+'x</span>';
   $('recent').innerHTML='<span class="lbl">RECENT</span>'+hist.slice(0,12).map(chip).join('');
@@ -246,11 +301,83 @@ $('go').onclick=()=>{
   else if(phase==='fly'&&bt&&!bt.at)api('cashout');
 };
 
+
+/* real-money wallet */
+function walletMsg(t,good=false){
+  const el=$('walletMsg');
+  el.textContent=t||'';
+  el.style.color=good?'var(--green)':'var(--muted)';
+}
+function walletBalance(){
+  $('walletBal').textContent=fmt(me&&Number(me.bal)||0);
+}
+function walletTab(which){
+  const dep=which==='dep';
+  $('depTab').classList.toggle('active',dep);
+  $('wdTab').classList.toggle('active',!dep);
+  $('depositForm').classList.toggle('active',dep);
+  $('withdrawForm').classList.toggle('active',!dep);
+  walletMsg('');
+}
+function openWallet(which='dep'){
+  walletBalance();
+  walletTab(which);
+  show('walletM');
+}
+$('wallet').onclick=()=>openWallet('dep');
+$('openDeposit').onclick=()=>walletTab('dep');
+$('openWithdraw').onclick=()=>walletTab('wd');
+$('depTab').onclick=()=>walletTab('dep');
+$('wdTab').onclick=()=>walletTab('wd');
+$('walletClose').onclick=()=>hide('walletM');
+
+$('depositBtn').onclick=async()=>{
+  const amount=Math.floor(Number($('depAmount').value)||0);
+  if(amount<100){walletMsg('Minimum deposit is ₦100.');return}
+  walletMsg('Opening secure payment…');
+  const j=await api('deposit',{amount});
+  if(!j.ok){walletMsg(j.error||'Deposit could not be started.');return}
+  /*
+    The backend should return a verified payment authorization URL as:
+    {ok:true, url:"https://checkout..."}
+    or open it inside Telegram using Telegram.WebApp.openLink().
+  */
+  if(j.url){
+    try{Telegram.WebApp.openLink(j.url)}catch(e){location.href=j.url}
+    walletMsg('Complete the payment, then return to the game.',true);
+  }else{
+    walletMsg('Payment started. Complete it in the payment provider.');
+  }
+};
+
+$('withdrawBtn').onclick=async()=>{
+  const amount=Math.floor(Number($('wdAmount').value)||0);
+  const name=$('wdName').value.trim();
+  const account=$('wdAccount').value.trim();
+  const bank=$('wdBank').value.trim();
+  const code=$('wdCode').value.trim();
+  if(amount<100){walletMsg('Enter a valid withdrawal amount.');return}
+  if(!name||!account||!bank){walletMsg('Enter account name, account number and bank name.');return}
+  if(!me||amount>Number(me.bal)){walletMsg('Insufficient wallet balance.');return}
+  walletMsg('Submitting withdrawal request…');
+  const j=await api('withdraw',{
+    amount,
+    accountName:name,
+    accountNumber:account,
+    bankName:bank,
+    bankCode:code
+  });
+  if(!j.ok){walletMsg(j.error||'Withdrawal request failed.');return}
+  walletMsg(j.message||'Withdrawal request submitted successfully.',true);
+  $('wdAmount').value='';
+  walletBalance();
+};
+
 /* menu, bonus, navigation, login */
 $('menuBtn').onclick=$('nProf').onclick=()=>{labels();show('menuM')};
 $('closeMenu').onclick=()=>hide('menuM');
 function bonusUI(){const done=me&&me.bonus;$('claim').disabled=!!done;$('claim').textContent=done?'ALREADY CLAIMED':'CLAIM NOW'}
-$('wallet').onclick=$('nRew').onclick=()=>{bonusUI();show('bonusM')};
+$('nRew').onclick=()=>{bonusUI();show('bonusM')};
 $('closeBonus').onclick=()=>hide('bonusM');
 $('claim').onclick=async()=>{const j=await api('bonus');if(j.ok){tone(880);bonusUI()}};
 function showView(v){['Home','Game'].forEach(n=>{const on=v===n.toLowerCase();$('v'+n).classList.toggle('on',on);$('n'+n).classList.toggle('on',on)})}
