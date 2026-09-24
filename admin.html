@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
 <title>Crash Admin</title>
 
 <style>
@@ -13,25 +14,13 @@
   --green:#19e96f;
   --red:#ff304f;
   --gold:#ffd02d;
+  --blue:#38a8ff;
   --muted:#a7a0c5;
   --text:#fff;
+
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px)
-}
-
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#020008;
-    --panel:#0b0320;
-    --text:#fff
-  }
-}
-
-:root[data-theme="dark"]{
-  --bg:#020008;
-  --panel:#0b0320;
-  --text:#fff
 }
 
 *{
@@ -40,7 +29,13 @@
 
 body{
   margin:0;
-  background:radial-gradient(circle at 50% 0,#180040 0,#080019 45%,var(--bg) 100%);
+  background:
+    radial-gradient(
+      circle at 50% 0,
+      #180040 0,
+      #080019 45%,
+      var(--bg) 100%
+    );
   color:var(--text);
   font-family:Arial,Helvetica,sans-serif;
   min-height:100vh
@@ -61,10 +56,20 @@ h1 span{
   color:#ffb000
 }
 
+h2{
+  font-size:17px;
+  margin:0 0 10px
+}
+
+h3{
+  font-size:15px;
+  margin:0 0 8px
+}
+
 .card{
   border:1px solid var(--line);
   border-radius:16px;
-  background:rgba(8,0,24,.85);
+  background:rgba(8,0,24,.88);
   padding:12px 14px
 }
 
@@ -85,6 +90,18 @@ h1 span{
   color:var(--muted)
 }
 
+.money{
+  color:var(--green)!important
+}
+
+.blue{
+  color:var(--blue)!important
+}
+
+.red{
+  color:var(--red)!important
+}
+
 .dot{
   display:inline-block;
   width:9px;
@@ -99,11 +116,16 @@ h1 span{
   box-shadow:0 0 8px var(--green)
 }
 
-input,button,textarea{
+input,
+button,
+textarea,
+select{
   font:inherit
 }
 
-input{
+input,
+textarea,
+select{
   width:100%;
   padding:12px;
   background:#05000e;
@@ -114,6 +136,10 @@ input{
   font-size:16px
 }
 
+textarea{
+  resize:vertical
+}
+
 button{
   cursor:pointer;
   background:#9d36ff;
@@ -122,6 +148,45 @@ button{
   border-radius:10px;
   padding:10px 14px;
   font-weight:900
+}
+
+button:disabled{
+  opacity:.55;
+  cursor:not-allowed
+}
+
+.btn-dark{
+  background:#26104d;
+  border:1px solid #4d1d82
+}
+
+.btn-green{
+  background:#087b3c
+}
+
+.btn-red{
+  background:#8d1830
+}
+
+.btn-blue{
+  background:#176ba8
+}
+
+.section{
+  margin-bottom:12px
+}
+
+.section-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px
+}
+
+.section-title button{
+  padding:7px 10px;
+  font-size:12px
 }
 
 .list{
@@ -207,12 +272,120 @@ button{
 .note{
   color:var(--muted);
   font-size:12px;
-  margin:12px 0
+  margin:12px 0;
+  line-height:1.5
 }
 
-/* =========================
-   CRASH TARGET CONTROL
-   ========================= */
+.money-box{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px
+}
+
+.money-item{
+  background:#05000e;
+  border:1px solid #32125b;
+  border-radius:12px;
+  padding:12px
+}
+
+.money-item small{
+  color:var(--muted);
+  display:block;
+  margin-bottom:5px
+}
+
+.money-item b{
+  font-size:20px;
+  color:var(--gold)
+}
+
+.form-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px
+}
+
+.action-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:8px
+}
+
+.finance-status{
+  min-height:18px;
+  margin-top:8px;
+  font-size:12px
+}
+
+.tx{
+  padding:10px;
+  border:1px solid #32125b;
+  background:#05000e;
+  border-radius:10px
+}
+
+.tx-top{
+  display:flex;
+  justify-content:space-between;
+  gap:10px
+}
+
+.tx small{
+  display:block;
+  color:var(--muted);
+  line-height:1.5;
+  margin-top:4px
+}
+
+.tx-amount{
+  font-weight:900
+}
+
+.withdraw-card{
+  border:1px solid #542184;
+  border-radius:12px;
+  padding:11px;
+  background:#05000e
+}
+
+.withdraw-card + .withdraw-card{
+  margin-top:8px
+}
+
+.withdraw-head{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  align-items:center
+}
+
+.status{
+  display:inline-block;
+  padding:4px 7px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:900;
+  background:#26104d;
+  color:#fff
+}
+
+.status.pending{
+  color:#ffd02d
+}
+
+.status.success{
+  color:#19e96f
+}
+
+.status.failed{
+  color:#ff304f
+}
+
+.status.processing{
+  color:#38a8ff
+}
 
 .target-card{
   margin:0 0 12px
@@ -281,10 +454,28 @@ button{
   font-size:12px
 }
 
+.hidden{
+  display:none!important
+}
+
 @media(max-width:420px){
+
+  .money-box{
+    grid-template-columns:1fr
+  }
+
+  .form-row{
+    grid-template-columns:1fr
+  }
+
   .target-actions{
     grid-template-columns:1fr
   }
+
+  .action-row{
+    grid-template-columns:1fr
+  }
+
 }
 </style>
 </head>
@@ -293,112 +484,290 @@ button{
 
 <div class="wrap">
 
-  <!-- ADMIN LOGIN -->
-  <div id="gate" class="card">
+<!-- =========================
+     ADMIN LOGIN
+     ========================= -->
 
-    <h1>🛠 Crash <span>Admin</span></h1>
+<div id="gate" class="card">
 
-    <input
-      id="key"
-      type="password"
-      placeholder="Admin key"
-      autocomplete="current-password"
-    >
+  <h1>🛠 Crash <span>Admin</span></h1>
 
-    <button
-      id="enter"
-      style="width:100%"
-    >
-      OPEN
-    </button>
+  <input
+    id="key"
+    type="password"
+    placeholder="Admin key"
+    autocomplete="current-password"
+  >
 
-    <div id="err"></div>
+  <button id="enter" style="width:100%">
+    OPEN
+  </button>
+
+  <div id="err"></div>
+
+</div>
+
+
+<!-- =========================
+     ADMIN PANEL
+     ========================= -->
+
+<div id="main" hidden>
+
+  <h1>🛠 Crash <span>Admin</span></h1>
+
+
+  <!-- =========================
+       MAIN STATS
+       ========================= -->
+
+  <div class="grid">
+
+    <div class="card stat">
+      <b id="online">0</b>
+      <small>Online now</small>
+    </div>
+
+    <div class="card stat">
+      <b id="total">0</b>
+      <small>Total players</small>
+    </div>
+
+    <div class="card stat">
+      <b id="bets">0</b>
+      <small>Bets this round</small>
+    </div>
+
+    <div class="card stat">
+      <b id="phase">—</b>
+      <small id="rid">Round</small>
+    </div>
 
   </div>
 
 
-  <!-- ADMIN PANEL -->
-  <div id="main" hidden>
+  <!-- =========================
+       FINANCIAL DASHBOARD
+       ========================= -->
 
-    <h1>🛠 Crash <span>Admin</span></h1>
+  <div class="card section">
 
+    <div class="section-title">
 
-    <!-- STATS -->
-    <div class="grid">
+      <h2>💰 Financial Dashboard</h2>
 
-      <div class="card stat">
-        <b id="online">0</b>
-        <small>Online now</small>
-      </div>
-
-      <div class="card stat">
-        <b id="total">0</b>
-        <small>Total players</small>
-      </div>
-
-      <div class="card stat">
-        <b id="bets">0</b>
-        <small>Bets this round</small>
-      </div>
-
-      <div class="card stat">
-        <b id="phase">—</b>
-        <small id="rid">Round</small>
-      </div>
+      <button
+        id="refreshFinance"
+        class="btn-blue"
+      >
+        🔄 Refresh
+      </button>
 
     </div>
 
 
-    <!-- =========================
-         CRASH TARGET CONTROL
-         ========================= -->
+    <div class="money-box">
 
-    <div class="card target-card">
-
-      <h2>🎯 Crash Target Control</h2>
-
-      <p class="target-help">
-        Enter one or multiple crash targets.
-        Use commas, arrows, spaces, or new lines.
-        Example:
-        <b>2.22, 1.95, 3.50, 5.20</b>
-      </p>
-
-      <textarea
-        id="targetInput"
-        rows="4"
-        placeholder="2.22 → 1.95 → 3.50 → 5.20"
-      ></textarea>
-
-      <div class="target-actions">
-
-        <button
-          id="updateTargets"
-          type="button"
-        >
-          🎯 UPDATE TARGETS
-        </button>
-
-        <button
-          id="clearTargets"
-          type="button"
-        >
-          🗑️ CLEAR
-        </button>
-
+      <div class="money-item">
+        <small>💰 Payout Fund</small>
+        <b id="fundBalance">₦0.00</b>
       </div>
 
-      <div id="targetStatus"></div>
+      <div class="money-item">
+        <small>💳 Deposits</small>
+        <b id="depositTotal">₦0.00</b>
+      </div>
 
-      <div
-        id="targetPreview"
-        class="target-preview"
-      ></div>
+      <div class="money-item">
+        <small>🎮 Game Earnings</small>
+        <b id="earningTotal">₦0.00</b>
+      </div>
+
+      <div class="money-item">
+        <small>💸 Withdrawals</small>
+        <b id="withdrawTotal">₦0.00</b>
+      </div>
+
+      <div class="money-item">
+        <small>👛 User Wallets</small>
+        <b id="walletTotal">₦0.00</b>
+      </div>
+
+      <div class="money-item">
+        <small>⏳ Pending Withdrawals</small>
+        <b id="pendingWithdrawTotal">₦0.00</b>
+      </div>
 
     </div>
 
+    <div
+      id="financeStatus"
+      class="finance-status"
+    ></div>
 
-    <!-- PLAYER SEARCH -->
+  </div>
+
+
+  <!-- =========================
+       PAYOUT FUND
+       ========================= -->
+
+  <div class="card section">
+
+    <h2>🏦 Payout Fund</h2>
+
+    <p class="note">
+      Record the amount of payout liquidity available to the platform.
+      There is no ₦10,000,000 limit here. Values such as
+      ₦50,000,000 or ₦100,000,000 can be entered.
+      This ledger does not itself create money at your payment provider.
+    </p>
+
+    <input
+      id="fundInput"
+      type="number"
+      min="0"
+      step="0.01"
+      placeholder="Enter payout fund amount in ₦"
+    >
+
+    <div class="action-row">
+
+      <button
+        id="setFund"
+        class="btn-green"
+      >
+        💰 SET FUND
+      </button>
+
+      <button
+        id="refreshFund"
+        class="btn-dark"
+      >
+        🔄 LOAD FUND
+      </button>
+
+    </div>
+
+    <div
+      id="fundStatus"
+      class="finance-status"
+    ></div>
+
+  </div>
+
+
+  <!-- =========================
+       CRASH TARGET CONTROL
+       ========================= -->
+
+  <div class="card target-card">
+
+    <h2>🎯 Crash Target Control</h2>
+
+    <p class="target-help">
+      Enter one or multiple crash targets.
+      Use commas, arrows, spaces, or new lines.
+      Example:
+      <b>2.22, 1.95, 3.50, 5.20</b>
+    </p>
+
+    <textarea
+      id="targetInput"
+      rows="4"
+      placeholder="2.22 → 1.95 → 3.50 → 5.20"
+    ></textarea>
+
+    <div class="target-actions">
+
+      <button id="updateTargets" type="button">
+        🎯 UPDATE TARGETS
+      </button>
+
+      <button id="clearTargets" type="button">
+        🗑️ CLEAR
+      </button>
+
+    </div>
+
+    <div id="targetStatus"></div>
+
+    <div
+      id="targetPreview"
+      class="target-preview"
+    ></div>
+
+  </div>
+
+
+  <!-- =========================
+       WITHDRAWALS
+       ========================= -->
+
+  <div class="card section">
+
+    <div class="section-title">
+
+      <h2>💸 Withdrawal Requests</h2>
+
+      <button
+        id="refreshWithdrawals"
+        class="btn-blue"
+      >
+        🔄 Refresh
+      </button>
+
+    </div>
+
+    <div id="withdrawalsList">
+
+      <div class="note">
+        No withdrawal data loaded.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       TRANSACTIONS
+       ========================= -->
+
+  <div class="card section">
+
+    <div class="section-title">
+
+      <h2>📒 Transactions</h2>
+
+      <button
+        id="refreshTransactions"
+        class="btn-blue"
+      >
+        🔄 Refresh
+      </button>
+
+    </div>
+
+    <div id="transactionsList">
+
+      <div class="note">
+        No transactions loaded.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       PLAYER SEARCH
+       ========================= -->
+
+  <div class="card section">
+
+    <h2>👥 Players</h2>
+
     <input
       id="q"
       placeholder="Search name, ID or Telegram @username"
@@ -409,47 +778,63 @@ button{
       id="list"
     ></div>
 
-
-    <p class="note">
-      Each player has a permanent ID shown under their name.
-      Telegram details appear only when the game is opened inside
-      your verified Telegram mini app.
-      Crash Target Control updates the same crash_demo_v4 target
-      list used by the current Creator Panel on the same game origin.
-      For all-device/server-wide control, the backend must also
-      implement /admin/api/targets.
-    </p>
-
   </div>
+
+
+  <p class="note">
+    Each player has a permanent ID shown under their name.
+    Telegram details appear only when the game is opened inside
+    your verified Telegram mini app.
+  </p>
+
+</div>
 
 </div>
 
 
 <script>
 
-const $ = id => document.getElementById(id);
+const $ = id =>
+  document.getElementById(id);
+
 
 const esc = t =>
   String(t == null ? '' : t)
-    .replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+    .replace(/[&<>"']/g, c =>
+      '&#' + c.charCodeAt(0) + ';'
+    );
+
 
 const fmt = n =>
-  Number(n).toLocaleString(undefined,{
-    maximumFractionDigits:2
-  });
+  Number(n || 0).toLocaleString(
+    undefined,
+    {
+      maximumFractionDigits:2
+    }
+  );
+
+
+const money = n =>
+  '₦' + fmt(n);
 
 
 let key = null;
 let data = null;
+let finance = null;
 let timer = null;
 
 
 /* =========================
-   LOAD SAVED ADMIN KEY
+   LOAD ADMIN KEY
    ========================= */
 
 try{
-  key = localStorage.getItem('adminKey');
+
+  key =
+    localStorage.getItem(
+      'adminKey'
+    );
+
 }catch(e){}
 
 
@@ -459,23 +844,44 @@ try{
 
 async function call(path,body){
 
-  const r = await fetch(
-    '/admin/api/' + path,
-    {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json'
-      },
-      body:JSON.stringify(
-        Object.assign(
-          {key},
-          body || {}
-        )
-      )
-    }
-  );
+  const r =
+    await fetch(
+      '/admin/api/' + path,
+      {
+        method:'POST',
 
-  return r.json();
+        headers:{
+          'Content-Type':
+            'application/json'
+        },
+
+        body:JSON.stringify(
+          Object.assign(
+            {key:key},
+            body || {}
+          )
+        )
+      }
+    );
+
+
+  let result;
+
+  try{
+
+    result =
+      await r.json();
+
+  }catch(e){
+
+    throw new Error(
+      'Invalid server response'
+    );
+
+  }
+
+
+  return result;
 }
 
 
@@ -485,58 +891,109 @@ async function call(path,body){
 
 function ago(t){
 
-  if(!t) return 'never';
+  if(!t)
+    return 'never';
+
 
   const s =
     Math.max(
       0,
       Math.round(
-        (Date.now() - t) / 1000
+        (Date.now()-t)/1000
       )
     );
+
 
   if(s < 60)
     return s + 's ago';
 
+
   if(s < 3600)
-    return Math.round(s / 60) + ' min ago';
+    return Math.round(s/60) +
+      ' min ago';
+
 
   if(s < 86400)
-    return Math.round(s / 3600) + ' h ago';
+    return Math.round(s/3600) +
+      ' h ago';
 
-  return Math.round(s / 86400) + ' d ago';
+
+  return Math.round(s/86400) +
+    ' d ago';
 }
 
 
 /* =========================
-   RENDER ADMIN DATA
+   RENDER MAIN DATA
    ========================= */
 
 function render(){
 
-  if(!data) return;
+  if(!data)
+    return;
 
 
   $('online').textContent =
-    data.online;
+    data.online || 0;
+
 
   $('total').textContent =
-    data.total;
+    data.total || 0;
+
 
   $('bets').textContent =
-    data.round.bets;
+    data.round &&
+    data.round.bets != null
+      ? data.round.bets
+      : 0;
 
 
   $('phase').textContent =
-    {
-      count:'Betting',
-      fly:'Flying',
-      over:'Crashed'
-    }[data.round.phase] || '—';
+    data.round
+
+    ?
+
+    (
+      {
+        count:'Betting',
+        fly:'Flying',
+        over:'Crashed'
+      }[
+        data.round.phase
+      ] || '—'
+    )
+
+    :
+
+    '—';
 
 
   $('rid').textContent =
-    'Round #' + data.round.id;
+    data.round
+
+      ?
+
+      'Round #' +
+      data.round.id
+
+      :
+
+      'Round';
+
+
+  renderPlayers();
+
+}
+
+
+/* =========================
+   RENDER PLAYERS
+   ========================= */
+
+function renderPlayers(){
+
+  if(!data)
+    return;
 
 
   const q =
@@ -546,14 +1003,16 @@ function render(){
 
 
   const rows =
-    data.players
+    (data.players || [])
       .filter(p =>
         !q ||
         [
           p.name,
           p.id,
-          p.tg && p.tg.username,
-          p.tg && p.tg.name
+          p.tg &&
+          p.tg.username,
+          p.tg &&
+          p.tg.name
         ]
         .join(' ')
         .toLowerCase()
@@ -567,6 +1026,7 @@ function render(){
 
 
   $('list').innerHTML =
+
     rows.length
 
     ?
@@ -576,25 +1036,29 @@ function render(){
       '<div class="card p">' +
 
         '<div class="av">' +
+
           esc(
             (p.name || '?')[0]
               .toUpperCase()
           ) +
-        '</div>' +
 
+        '</div>' +
 
         '<div>' +
 
           '<b>' +
 
             '<span class="dot' +
-              (p.online ? ' on' : '') +
+              (
+                p.online
+                  ? ' on'
+                  : ''
+              ) +
             '"></span>' +
 
             esc(p.name) +
 
           '</b>' +
-
 
           '<small>' +
 
@@ -607,18 +1071,26 @@ function render(){
               ?
 
               ' · TG ' +
+
               esc(
                 p.tg.username
-                  ? '@' + p.tg.username
+                  ? '@' +
+                    p.tg.username
                   : p.tg.id
               ) +
 
               (
                 p.tg.name
-                  ? ' (' +
-                    esc(p.tg.name) +
-                    ')'
-                  : ''
+
+                  ?
+
+                  ' (' +
+                  esc(p.tg.name) +
+                  ')'
+
+                  :
+
+                  ''
               )
 
               :
@@ -630,8 +1102,15 @@ function render(){
 
             (
               p.online
-                ? 'Online now'
-                : 'Last seen ' + ago(p.seen)
+
+                ?
+
+                'Online now'
+
+                :
+
+                'Last seen ' +
+                ago(p.seen)
             ) +
 
             ' · joined ' +
@@ -640,65 +1119,85 @@ function render(){
             '<br>' +
 
             'Rounds ' +
-            p.rounds +
+            (p.rounds || 0) +
 
             ' · wins ' +
-            p.wins +
+            (p.wins || 0) +
 
             ' · best ' +
+
             (
               p.best
-                ? p.best.toFixed(2) + 'x'
+                ? Number(p.best)
+                    .toFixed(2) + 'x'
                 : '—'
             ) +
 
             (
               p.bet
 
-              ?
+                ?
 
-              '<br>Bet 🪙 ' +
-              fmt(p.bet.amt) +
+                '<br>Bet 🪙 ' +
+                fmt(p.bet.amt) +
 
-              (
-                p.bet.auto
-                  ? ' (auto ' +
+                (
+                  p.bet.auto
+
+                    ?
+
+                    ' (auto ' +
                     p.bet.auto +
                     'x)'
-                  : ''
-              ) +
 
-              (
-                p.bet.at
-                  ? ' · cashed at ' +
-                    p.bet.at.toFixed(2) +
+                    :
+
+                    ''
+                ) +
+
+                (
+                  p.bet.at
+
+                    ?
+
+                    ' · cashed at ' +
+                    Number(p.bet.at)
+                      .toFixed(2) +
                     'x'
-                  : ''
-              )
 
-              :
+                    :
 
-              ''
+                    ''
+                )
+
+                :
+
+                ''
             ) +
 
           '</small>' +
 
         '</div>' +
 
-
         '<div class="num">' +
 
           '<strong>🪙 ' +
-            fmt(p.bal) +
+          fmt(p.bal) +
           '</strong>' +
 
           '<span class="' +
-            (p.pnl >= 0
-              ? 'win'
-              : 'lose') +
+            (
+              p.pnl >= 0
+                ? 'win'
+                : 'lose'
+            ) +
           '">' +
 
-            (p.pnl >= 0 ? '+' : '') +
+            (
+              p.pnl >= 0
+                ? '+'
+                : ''
+            ) +
 
             fmt(p.pnl) +
 
@@ -725,6 +1224,7 @@ function render(){
     '<div class="card" style="color:var(--muted)">' +
       'No players match.' +
     '</div>';
+
 }
 
 
@@ -739,8 +1239,13 @@ async function poll(){
     const j =
       await call('state');
 
+
     if(!j.ok)
-      throw new Error(j.error);
+      throw new Error(
+        j.error ||
+        'Admin authentication failed'
+      );
+
 
     data = j;
 
@@ -759,6 +1264,7 @@ async function poll(){
       'Could not reach the server';
 
   }
+
 }
 
 
@@ -773,15 +1279,10 @@ async function open(){
     key;
 
 
-  const j =
-    await call('state');
-
-
-  if(!j.ok){
+  if(!key){
 
     $('err').textContent =
-      j.error ||
-      'Wrong admin key';
+      'Enter your admin key.';
 
     return;
   }
@@ -789,29 +1290,66 @@ async function open(){
 
   try{
 
-    localStorage.setItem(
-      'adminKey',
-      key
-    );
-
-  }catch(e){}
+    const j =
+      await call('state');
 
 
-  $('gate').hidden = true;
+    if(!j.ok){
 
-  $('main').hidden = false;
+      $('err').textContent =
+        j.error ||
+        'Wrong admin key';
 
-  data = j;
+      return;
+    }
 
-  render();
 
-  clearInterval(timer);
+    try{
 
-  timer =
-    setInterval(
-      poll,
-      2000
-    );
+      localStorage.setItem(
+        'adminKey',
+        key
+      );
+
+    }catch(e){}
+
+
+    $('gate').hidden = true;
+
+    $('main').hidden = false;
+
+    data = j;
+
+    render();
+
+    await loadFinance();
+
+    await loadWithdrawals();
+
+    await loadTransactions();
+
+    clearInterval(timer);
+
+    timer =
+      setInterval(
+        async () => {
+
+          await poll();
+
+          await loadFinance();
+
+        },
+        5000
+      );
+
+  }catch(e){
+
+    $('err').textContent =
+      e.message ||
+      'Could not reach server';
+
+  }
+
 }
 
 
@@ -819,22 +1357,25 @@ async function open(){
    LOGIN
    ========================= */
 
-$('enter').onclick = open;
+$('enter').onclick =
+  open;
 
 
-$('key').onkeydown = e => {
+$('key').onkeydown =
+  e => {
 
-  if(e.key === 'Enter')
-    open();
+    if(e.key === 'Enter')
+      open();
 
-};
+  };
 
 
 /* =========================
-   SEARCH
+   PLAYER SEARCH
    ========================= */
 
-$('q').oninput = render;
+$('q').oninput =
+  renderPlayers;
 
 
 /* =========================
@@ -847,44 +1388,984 @@ $('list').onclick =
     const b =
       e.target.closest('button');
 
-    if(!b) return;
+
+    if(!b)
+      return;
+
 
     b.disabled = true;
 
-    await call(
-      'restore',
-      {
-        id:b.dataset.id
-      }
+
+    try{
+
+      await call(
+        'restore',
+        {
+          id:b.dataset.id
+        }
+      );
+
+      await poll();
+
+    }catch(err){
+
+      alert(
+        err.message ||
+        'Restore failed'
+      );
+
+    }
+
+    b.disabled = false;
+
+  };
+
+
+/* =========================================================
+   FINANCIAL DASHBOARD
+   ========================================================= */
+
+function setFinanceStatus(
+  message,
+  type
+){
+
+  const el =
+    $('financeStatus');
+
+
+  el.textContent =
+    message || '';
+
+
+  el.style.color =
+    type === 'error'
+      ? '#ff6b8a'
+      :
+    type === 'success'
+      ? '#19e96f'
+      :
+    '#ffd02d';
+}
+
+
+async function loadFinance(){
+
+  try{
+
+    const j =
+      await call('finance');
+
+
+    if(!j.ok){
+
+      setFinanceStatus(
+        j.error ||
+        'Finance data unavailable.',
+        'error'
+      );
+
+      return;
+    }
+
+
+    finance = j;
+
+
+    const fund =
+      j.payoutFundKobo != null
+        ? Number(j.payoutFundKobo)/100
+        :
+      j.payoutFund != null
+        ? Number(j.payoutFund)
+        :
+      0;
+
+
+    const deposits =
+      j.depositTotalKobo != null
+        ? Number(j.depositTotalKobo)/100
+        :
+      j.depositTotal != null
+        ? Number(j.depositTotal)
+        :
+      0;
+
+
+    const earnings =
+      j.earningTotalKobo != null
+        ? Number(j.earningTotalKobo)/100
+        :
+      j.earningTotal != null
+        ? Number(j.earningTotal)
+        :
+      0;
+
+
+    const withdrawals =
+      j.withdrawTotalKobo != null
+        ? Number(j.withdrawTotalKobo)/100
+        :
+      j.withdrawTotal != null
+        ? Number(j.withdrawTotal)
+        :
+      0;
+
+
+    const wallets =
+      j.walletTotalKobo != null
+        ? Number(j.walletTotalKobo)/100
+        :
+      j.walletTotal != null
+        ? Number(j.walletTotal)
+        :
+      0;
+
+
+    const pending =
+      j.pendingWithdrawTotalKobo != null
+        ? Number(j.pendingWithdrawTotalKobo)/100
+        :
+      j.pendingWithdrawTotal != null
+        ? Number(j.pendingWithdrawTotal)
+        :
+      0;
+
+
+    $('fundBalance').textContent =
+      money(fund);
+
+
+    $('depositTotal').textContent =
+      money(deposits);
+
+
+    $('earningTotal').textContent =
+      money(earnings);
+
+
+    $('withdrawTotal').textContent =
+      money(withdrawals);
+
+
+    $('walletTotal').textContent =
+      money(wallets);
+
+
+    $('pendingWithdrawTotal').textContent =
+      money(pending);
+
+
+    $('fundInput').value =
+      fund || '';
+
+
+    setFinanceStatus(
+      '✅ Financial data updated.',
+      'success'
     );
 
-    poll();
+
+  }catch(e){
+
+    setFinanceStatus(
+      '⚠️ Finance endpoint unavailable.',
+      'error'
+    );
+
+  }
+
+}
+
+
+/* =========================
+   REFRESH FINANCE
+   ========================= */
+
+$('refreshFinance').onclick =
+  loadFinance;
+
+
+/* =========================
+   PAYOUT FUND
+   ========================= */
+
+$('setFund').onclick =
+  async () => {
+
+    const value =
+      Number(
+        $('fundInput').value
+      );
+
+
+    if(!Number.isFinite(value) ||
+       value < 0){
+
+      $('fundStatus').textContent =
+        '⚠️ Enter a valid amount.';
+
+      $('fundStatus').style.color =
+        '#ff6b8a';
+
+      return;
+    }
+
+
+    $('setFund').disabled = true;
+
+
+    $('fundStatus').textContent =
+      '⏳ Updating payout fund...';
+
+    $('fundStatus').style.color =
+      '#ffd02d';
+
+
+    try{
+
+      const j =
+        await call(
+          'payout-fund',
+          {
+            amount:value
+          }
+        );
+
+
+      if(!j.ok){
+
+        throw new Error(
+          j.error ||
+          'Could not update payout fund'
+        );
+
+      }
+
+
+      $('fundStatus').textContent =
+        '✅ Payout fund updated.';
+
+      $('fundStatus').style.color =
+        '#19e96f';
+
+
+      await loadFinance();
+
+
+    }catch(e){
+
+      $('fundStatus').textContent =
+        '❌ ' +
+        (
+          e.message ||
+          'Payout fund update failed'
+        );
+
+      $('fundStatus').style.color =
+        '#ff6b8a';
+
+    }
+
+
+    $('setFund').disabled = false;
+
   };
+
+
+$('refreshFund').onclick =
+  loadFinance;
+
+
+/* =========================================================
+   WITHDRAWALS
+   ========================================================= */
+
+function withdrawalStatus(status){
+
+  const s =
+    String(status || '')
+      .toLowerCase();
+
+
+  let cls = 'pending';
+
+
+  if(
+    s === 'success' ||
+    s === 'successful' ||
+    s === 'completed'
+  ){
+
+    cls = 'success';
+
+  }else if(
+    s === 'failed' ||
+    s === 'reversed' ||
+    s === 'cancelled'
+  ){
+
+    cls = 'failed';
+
+  }else if(
+    s === 'processing' ||
+    s === 'pending_transfer'
+  ){
+
+    cls = 'processing';
+
+  }
+
+
+  return (
+    '<span class="status ' +
+    cls +
+    '">' +
+    esc(
+      status || 'PENDING'
+    ).toUpperCase() +
+    '</span>'
+  );
+
+}
+
+
+function getWithdrawalId(w){
+
+  return (
+    w.id ||
+    w._id ||
+    w.reference ||
+    ''
+  );
+
+}
+
+
+function getWithdrawalAmount(w){
+
+  if(w.amountKobo != null)
+    return Number(w.amountKobo)/100;
+
+
+  if(w.amountKobo === 0)
+    return 0;
+
+
+  return Number(
+    w.amount || 0
+  );
+
+}
+
+
+function renderWithdrawals(rows){
+
+  const box =
+    $('withdrawalsList');
+
+
+  if(!Array.isArray(rows) ||
+     !rows.length){
+
+    box.innerHTML =
+      '<div class="note">' +
+      'No withdrawal requests.' +
+      '</div>';
+
+    return;
+  }
+
+
+  box.innerHTML =
+    rows.map(w => {
+
+      const amount =
+        getWithdrawalAmount(w);
+
+
+      const id =
+        getWithdrawalId(w);
+
+
+      const user =
+        w.userName ||
+        w.name ||
+        w.playerName ||
+        w.userId ||
+        'Unknown user';
+
+
+      const bank =
+        w.bankName ||
+        w.bank ||
+        'Bank not supplied';
+
+
+      const account =
+        w.accountNumber ||
+        w.account ||
+        '';
+
+
+      const status =
+        String(
+          w.status ||
+          'pending'
+        );
+
+
+      const canPay =
+        [
+          'pending',
+          'awaiting',
+          'approved'
+        ].includes(
+          status.toLowerCase()
+        );
+
+
+      return (
+
+        '<div class="withdraw-card">' +
+
+          '<div class="withdraw-head">' +
+
+            '<b>💸 ' +
+            money(amount) +
+            '</b>' +
+
+            withdrawalStatus(status) +
+
+          '</div>' +
+
+          '<small style="color:var(--muted)">' +
+
+            'User: ' +
+            esc(user) +
+
+            '<br>' +
+
+            'Bank: ' +
+            esc(bank) +
+
+            '<br>' +
+
+            'Account: ' +
+            esc(account) +
+
+            '<br>' +
+
+            'Reference: ' +
+            esc(
+              w.reference ||
+              id ||
+              '—'
+            ) +
+
+            (
+              w.createdAt
+
+                ?
+
+                '<br>Created: ' +
+                esc(
+                  new Date(
+                    w.createdAt
+                  ).toLocaleString()
+                )
+
+                :
+
+                ''
+            ) +
+
+          '</small>' +
+
+          (
+            canPay && id
+
+              ?
+
+              '<div class="action-row">' +
+
+                '<button ' +
+                  'class="btn-green pay-withdraw" ' +
+                  'data-id="' +
+                  esc(id) +
+                  '">' +
+                  '🏦 PAY WITH PROVIDER' +
+                '</button>' +
+
+                '<button ' +
+                  'class="btn-red reject-withdraw" ' +
+                  'data-id="' +
+                  esc(id) +
+                  '">' +
+                  '❌ REJECT' +
+                '</button>' +
+
+              '</div>'
+
+              :
+
+              ''
+
+          ) +
+
+        '</div>'
+
+      );
+
+    }).join('');
+
+}
+
+
+async function loadWithdrawals(){
+
+  try{
+
+    const j =
+      await call(
+        'withdrawals'
+      );
+
+
+    if(!j.ok){
+
+      $('withdrawalsList').innerHTML =
+        '<div class="note" style="color:#ff6b8a">' +
+        esc(
+          j.error ||
+          'Could not load withdrawals.'
+        ) +
+        '</div>';
+
+      return;
+    }
+
+
+    const rows =
+      Array.isArray(j)
+        ? j
+        :
+      Array.isArray(j.withdrawals)
+        ? j.withdrawals
+        :
+      Array.isArray(j.data)
+        ? j.data
+        :
+      [];
+
+
+    renderWithdrawals(rows);
+
+  }catch(e){
+
+    $('withdrawalsList').innerHTML =
+      '<div class="note" style="color:#ff6b8a">' +
+      'Withdrawal endpoint unavailable.' +
+      '</div>';
+
+  }
+
+}
+
+
+$('refreshWithdrawals').onclick =
+  loadWithdrawals;
+
+
+/* =========================
+   WITHDRAWAL ACTIONS
+   ========================= */
+
+$('withdrawalsList').onclick =
+  async e => {
+
+    const pay =
+      e.target.closest(
+        '.pay-withdraw'
+      );
+
+
+    const reject =
+      e.target.closest(
+        '.reject-withdraw'
+      );
+
+
+    if(pay){
+
+      const id =
+        pay.dataset.id;
+
+
+      if(
+        !confirm(
+          'Process this withdrawal through the payment provider?'
+        )
+      )
+        return;
+
+
+      pay.disabled = true;
+
+
+      try{
+
+        const j =
+          await call(
+            'withdrawal-pay',
+            {
+              id:id
+            }
+          );
+
+
+        if(!j.ok){
+
+          throw new Error(
+            j.error ||
+            'Withdrawal payment failed'
+          );
+
+        }
+
+
+        alert(
+          'Withdrawal payment request submitted.'
+        );
+
+
+        await loadWithdrawals();
+
+        await loadFinance();
+
+
+      }catch(err){
+
+        alert(
+          err.message ||
+          'Withdrawal payment failed'
+        );
+
+        pay.disabled = false;
+
+      }
+
+    }
+
+
+    if(reject){
+
+      const id =
+        reject.dataset.id;
+
+
+      if(
+        !confirm(
+          'Reject this withdrawal request?'
+        )
+      )
+        return;
+
+
+      reject.disabled = true;
+
+
+      try{
+
+        const j =
+          await call(
+            'withdrawal-reject',
+            {
+              id:id
+            }
+          );
+
+
+        if(!j.ok){
+
+          throw new Error(
+            j.error ||
+            'Could not reject withdrawal'
+          );
+
+        }
+
+
+        await loadWithdrawals();
+
+        await loadFinance();
+
+
+      }catch(err){
+
+        alert(
+          err.message ||
+          'Could not reject withdrawal'
+        );
+
+        reject.disabled = false;
+
+      }
+
+    }
+
+  };
+
+
+/* =========================================================
+   TRANSACTIONS
+   ========================================================= */
+
+function transactionType(t){
+
+  const type =
+    String(
+      t.type ||
+      t.kind ||
+      'transaction'
+    ).toLowerCase();
+
+
+  if(type.includes('deposit'))
+    return '💳 Deposit';
+
+
+  if(type.includes('withdraw'))
+    return '💸 Withdrawal';
+
+
+  if(
+    type.includes('win') ||
+    type.includes('earning')
+  )
+    return '🏆 Game earning';
+
+
+  if(type.includes('bet'))
+    return '🎮 Bet';
+
+
+  if(type.includes('refund'))
+    return '↩️ Refund';
+
+
+  return '📒 ' +
+    esc(
+      t.type ||
+      t.kind ||
+      'Transaction'
+    );
+
+}
+
+
+function transactionAmount(t){
+
+  if(t.amountKobo != null)
+    return Number(t.amountKobo)/100;
+
+
+  return Number(
+    t.amount || 0
+  );
+
+}
+
+
+function renderTransactions(rows){
+
+  const box =
+    $('transactionsList');
+
+
+  if(!Array.isArray(rows) ||
+     !rows.length){
+
+    box.innerHTML =
+      '<div class="note">' +
+      'No transactions found.' +
+      '</div>';
+
+    return;
+  }
+
+
+  box.innerHTML =
+    rows.slice(0,100).map(t => {
+
+      const amount =
+        transactionAmount(t);
+
+
+      const positive =
+        t.amountKobo != null
+          ? Number(t.amountKobo) >= 0
+          : Number(t.amount || 0) >= 0;
+
+
+      const user =
+        t.userName ||
+        t.name ||
+        t.userId ||
+        'System';
+
+
+      return (
+
+        '<div class="tx">' +
+
+          '<div class="tx-top">' +
+
+            '<b>' +
+              transactionType(t) +
+            '</b>' +
+
+            '<span class="tx-amount ' +
+              (
+                positive
+                  ? 'win'
+                  : 'lose'
+              ) +
+            '">' +
+
+              (
+                positive
+                  ? '+'
+                  : '-'
+              ) +
+
+              money(
+                Math.abs(amount)
+              ) +
+
+            '</span>' +
+
+          '</div>' +
+
+          '<small>' +
+
+            'User: ' +
+            esc(user) +
+
+            '<br>' +
+
+            'Reference: ' +
+            esc(
+              t.reference ||
+              t.id ||
+              '—'
+            ) +
+
+            (
+              t.status
+
+                ?
+
+                '<br>Status: ' +
+                esc(t.status)
+
+                :
+
+                ''
+            ) +
+
+            (
+              t.createdAt
+
+                ?
+
+                '<br>' +
+                esc(
+                  new Date(
+                    t.createdAt
+                  ).toLocaleString()
+                )
+
+                :
+
+                ''
+            ) +
+
+          '</small>' +
+
+        '</div>'
+
+      );
+
+    }).join('');
+
+}
+
+
+async function loadTransactions(){
+
+  try{
+
+    const j =
+      await call(
+        'transactions'
+      );
+
+
+    if(!j.ok){
+
+      $('transactionsList').innerHTML =
+        '<div class="note" style="color:#ff6b8a">' +
+        esc(
+          j.error ||
+          'Could not load transactions.'
+        ) +
+        '</div>';
+
+      return;
+    }
+
+
+    const rows =
+      Array.isArray(j)
+        ? j
+        :
+      Array.isArray(j.transactions)
+        ? j.transactions
+        :
+      Array.isArray(j.data)
+        ? j.data
+        :
+      [];
+
+
+    renderTransactions(rows);
+
+  }catch(e){
+
+    $('transactionsList').innerHTML =
+      '<div class="note" style="color:#ff6b8a">' +
+      'Transaction endpoint unavailable.' +
+      '</div>';
+
+  }
+
+}
+
+
+$('refreshTransactions').onclick =
+  loadTransactions;
 
 
 /* =========================================================
    CRASH TARGET CONTROL
    ========================================================= */
 
-
-/* Convert admin input into numbers */
-
 function parseTargets(text){
 
   if(!text)
     return [];
 
-
-  /*
-    Accept:
-
-    2.22, 1.95, 3.50
-    2.22 → 1.95 → 3.50
-    2.22 1.95 3.50
-    2.22
-    1.95
-    3.50
-  */
 
   const matches =
     text.match(
@@ -899,10 +2380,9 @@ function parseTargets(text){
         Number.isFinite(n) &&
         n >= 1.01
     );
+
 }
 
-
-/* Show target chips */
 
 function renderTargetPreview(targets){
 
@@ -925,10 +2405,9 @@ function renderTargetPreview(targets){
         n.toFixed(2) +
         'x</span>'
     ).join('');
+
 }
 
-
-/* Load local target list */
 
 function loadLocalTargets(){
 
@@ -938,6 +2417,7 @@ function loadLocalTargets(){
       localStorage.getItem(
         'crash_demo_v4'
       );
+
 
     if(!raw)
       return;
@@ -957,16 +2437,17 @@ function loadLocalTargets(){
       $('targetInput').value =
         saved.customTargets.join(', ');
 
+
       renderTargetPreview(
         saved.customTargets
       );
+
     }
 
   }catch(e){}
+
 }
 
-
-/* Save target list locally */
 
 function saveLocalTargets(targets){
 
@@ -980,12 +2461,18 @@ function saveLocalTargets(targets){
 
     let saved = {};
 
+
     if(raw){
 
       try{
-        saved = JSON.parse(raw) || {};
+
+        saved =
+          JSON.parse(raw) || {};
+
       }catch(e){
+
         saved = {};
+
       }
 
     }
@@ -1001,6 +2488,7 @@ function saveLocalTargets(targets){
     );
 
   }catch(e){}
+
 }
 
 
@@ -1033,17 +2521,18 @@ $('updateTargets').onclick =
     }
 
 
-    /* Remove duplicates */
-
     const uniqueTargets =
-      [...new Set(
-        targets.map(
-          n => Number(n.toFixed(2))
+      [
+        ...new Set(
+          targets.map(
+            n =>
+              Number(
+                n.toFixed(2)
+              )
+          )
         )
-      )];
+      ];
 
-
-    /* Save locally */
 
     saveLocalTargets(
       uniqueTargets
@@ -1061,13 +2550,6 @@ $('updateTargets').onclick =
     status.style.color =
       '#ffd02d';
 
-
-    /*
-      Send to backend.
-
-      This will work once server.js
-      has the /admin/api/targets route.
-    */
 
     try{
 
@@ -1092,20 +2574,25 @@ $('updateTargets').onclick =
       }else{
 
         status.textContent =
-          '⚠️ Saved on this device. Server: ' +
-          (result.error || 'not available');
+          '⚠️ Server: ' +
+          (
+            result.error ||
+            'not available'
+          );
 
         status.style.color =
           '#ffd02d';
+
       }
 
     }catch(e){
 
       status.textContent =
-        '⚠️ Saved on this device. Server connection not available yet.';
+        '⚠️ Server connection unavailable.';
 
       status.style.color =
         '#ffd02d';
+
     }
 
   };
@@ -1122,6 +2609,7 @@ $('clearTargets').onclick =
 
     $('targetPreview').innerHTML = '';
 
+
     try{
 
       localStorage.removeItem(
@@ -1132,16 +2620,11 @@ $('clearTargets').onclick =
 
 
     $('targetStatus').textContent =
-      '🗑️ Local crash targets cleared.';
+      '🗑️ Clearing server targets...';
 
     $('targetStatus').style.color =
       '#ffd02d';
 
-
-    /*
-      Also tell backend to clear
-      the server-side targets.
-    */
 
     try{
 
@@ -1162,9 +2645,29 @@ $('clearTargets').onclick =
         $('targetStatus').style.color =
           '#19e96f';
 
+      }else{
+
+        $('targetStatus').textContent =
+          '⚠️ ' +
+          (
+            result.error ||
+            'Could not clear server targets.'
+          );
+
+        $('targetStatus').style.color =
+          '#ff6b8a';
+
       }
 
-    }catch(e){}
+    }catch(e){
+
+      $('targetStatus').textContent =
+        '⚠️ Server connection unavailable.';
+
+      $('targetStatus').style.color =
+        '#ff6b8a';
+
+    }
 
   };
 
