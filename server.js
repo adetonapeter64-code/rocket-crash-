@@ -1,4 +1,15 @@
-// Live Crash server: one shared game for every player. No dependencies. Run: node server.js
+// Live Crash server: one shared game for every player.
+// Added:
+// - Paystack deposits
+// - Wallet transaction ledger
+// - Withdrawals
+// - Bank list
+// - Paystack transfer recipients
+// - Admin payout-funding ledger
+// - Admin payout processing
+// - Transfer verification
+//
+// Run: node server.js
 
 const http = require('http'),
   fs = require('fs'),
@@ -18,6 +29,30 @@ const GROWTH = 0.1,
   START = 1000,
   BONUS = 500;
 
+/*
+=========================================================
+PAYMENT SETTINGS
+=========================================================
+*/
+
+const PAYSTACK_SECRET_KEY =
+  process.env.PAYSTACK_SECRET_KEY || '';
+
+const PAYSTACK_URL =
+  'https://api.paystack.co';
+
+const WITHDRAW_MIN =
+  Number(process.env.WITHDRAW_MIN || 3700);
+
+const WITHDRAW_MAX =
+  Number(process.env.WITHDRAW_MAX || 1000000000);
+
+
+/*
+=========================================================
+DATABASE
+=========================================================
+*/
 
 let db = {
   players: {},
@@ -27,7 +62,30 @@ let db = {
 
   /* ADMIN CRASH TARGET CONTROL */
   customTargets: [],
-  customTargetIndex: 0
+  customTargetIndex: 0,
+
+  /*
+  =======================================================
+  FINANCIAL SYSTEM
+  =======================================================
+  */
+
+  /*
+    payoutFundKobo is an ADMIN LEDGER.
+
+    It can be greater than ₦10,000,000.
+    We store kobo as an integer.
+  */
+
+  payoutFundKobo: 0,
+
+  financialTransactions: [],
+
+  deposits: {},
+
+  withdrawals: {},
+
+  nextFinancialId: 1
 };
 
 
@@ -41,13 +99,90 @@ try {
 } catch (e) {}
 
 
+/*
+=========================================================
+DATABASE MIGRATION
+=========================================================
+*/
+
+if (!Array.isArray(db.customTargets))
+  db.customTargets = [];
+
+if (!Number.isInteger(db.customTargetIndex))
+  db.customTargetIndex = 0;
+
+if (!Number.isSafeInteger(db.payoutFundKobo))
+  db.payoutFundKobo = 0;
+
+if (!Array.isArray(db.financialTransactions))
+  db.financialTransactions = [];
+
+if (!db.deposits || typeof db.deposits !== 'object')
+  db.deposits = {};
+
+if (!db.withdrawals || typeof db.withdrawals !== 'object')
+  db.withdrawals = {};
+
+if (!Number.isInteger(db.nextFinancialId))
+  db.nextFinancialId = 1;
+
+
+/*
+=========================================================
+OLD PLAYER MIGRATION
+=========================================================
+*/
+
 for (const p of Object.values(db.players)) {
+
   if (p.bet) {
+
     p.bal += p.bet;
+
     p.bet = 0;
+
   }
+
+  if (!p.st) {
+
+    p.st = {
+      r: 0,
+      w: 0,
+      best: 0,
+      big: 0
+    };
+
+  }
+
+  if (!Array.isArray(p.log))
+    p.log = [];
+
+  if (typeof p.bonus !== 'boolean')
+    p.bonus = false;
+
+  if (!p.email)
+    p.email = '';
+
+  if (!Array.isArray(p.transactions))
+    p.transactions = [];
+
+  if (!Array.isArray(p.deposits))
+    p.deposits = [];
+
+  if (!Array.isArray(p.withdrawals))
+    p.withdrawals = [];
+
+  if (!p.bank)
+    p.bank = null;
+
 }
 
+
+/*
+=========================================================
+SAVE SYSTEM
+=========================================================
+*/
 
 let dirty = false;
 
@@ -57,7 +192,9 @@ const save = () => {
 
 
 setInterval(() => {
+
   if (dirty) {
+
     dirty = false;
 
     fs.writeFile(
@@ -65,9 +202,17 @@ setInterval(() => {
       JSON.stringify(db),
       () => {}
     );
+
   }
+
 }, 1000);
 
+
+/*
+=========================================================
+ADMIN KEY
+=========================================================
+*/
 
 const ADMIN_KEY =
   process.env.ADMIN_KEY ||
@@ -80,9 +225,21 @@ const ADMIN_KEY =
 save();
 
 
+/*
+=========================================================
+TELEGRAM
+=========================================================
+*/
+
 const BOT_TOKEN =
   process.env.BOT_TOKEN || '';
 
+
+/*
+=========================================================
+HELPERS
+=========================================================
+*/
 
 const sha = s =>
   crypto
@@ -90,6 +247,354 @@ const sha = s =>
     .update(s)
     .digest('hex');
 
+
+const r2 = n =>
+  Math.round(n * 100) / 100;
+
+
+const nairaToKobo = amount => {
+
+  const n = Number(amount);
+
+  if (!Number.isFinite(n))
+    return 0;
+
+  const k =
+    Math.round(n * 100);
+
+  if (!Number.isSafeInteger(k))
+    return 0;
+
+  return k;
+
+};
+
+
+const koboToNaira = kobo =>
+  r2(
+    Number(kobo || 0) / 100
+  );
+
+
+const money = amount =>
+  koboToNaira(
+    nairaToKobo(amount)
+  );
+
+
+const makeReference = prefix =>
+  (
+    prefix +
+    '_' +
+    Date.now() +
+    '_' +
+    crypto
+      .randomBytes(6)
+      .toString('hex')
+  )
+  .toLowerCase()
+  .replace(
+    /[^a-z0-9_-]/g,
+    ''
+  );
+
+
+const financialId = () =>
+  db.nextFinancialId++;
+
+
+/*
+=========================================================
+FINANCIAL TRANSACTION LEDGER
+=========================================================
+*/
+
+function addFinancialTransaction(data) {
+
+  const tx = {
+
+    id:
+      financialId(),
+
+    reference:
+      data.reference ||
+      makeReference('tx'),
+
+    userId:
+      data.userId || null,
+
+    type:
+      data.type || 'OTHER',
+
+    amount:
+      r2(
+        Number(data.amount || 0)
+      ),
+
+    direction:
+      data.direction || 'NONE',
+
+    status:
+      data.status || 'PENDING',
+
+    description:
+      data.description || '',
+
+    provider:
+      data.provider || '',
+
+    providerReference:
+      data.providerReference || '',
+
+    createdAt:
+      Date.now(),
+
+    updatedAt:
+      Date.now()
+
+  };
+
+
+  db.financialTransactions.unshift(tx);
+
+
+  /*
+    Keep history from growing forever.
+  */
+
+  db.financialTransactions =
+    db.financialTransactions.slice(
+      0,
+      5000
+    );
+
+
+  save();
+
+  return tx;
+}
+
+
+/*
+=========================================================
+PLAYER WALLET LEDGER
+=========================================================
+*/
+
+function addPlayerTransaction(
+  p,
+  type,
+  amount,
+  description,
+  reference,
+  status
+) {
+
+  if (!Array.isArray(p.transactions))
+    p.transactions = [];
+
+
+  const tx = {
+
+    reference:
+      reference ||
+      makeReference('wallet'),
+
+    type,
+
+    amount:
+      r2(
+        Number(amount || 0)
+      ),
+
+    description:
+      description || '',
+
+    status:
+      status || 'SUCCESS',
+
+    createdAt:
+      Date.now()
+
+  };
+
+
+  p.transactions.unshift(tx);
+
+
+  p.transactions =
+    p.transactions.slice(
+      0,
+      100
+    );
+
+
+  save();
+
+  return tx;
+}
+
+
+/*
+=========================================================
+PAYSTACK REQUEST
+=========================================================
+*/
+
+function paystackRequest(
+  method,
+  endpoint,
+  body
+) {
+
+  return new Promise(
+    (resolve, reject) => {
+
+      if (!PAYSTACK_SECRET_KEY) {
+
+        return reject(
+          new Error(
+            'PAYSTACK_SECRET_KEY is missing'
+          )
+        );
+
+      }
+
+
+      const payload =
+        body
+          ? JSON.stringify(body)
+          : '';
+
+
+      const url =
+        new URL(
+          PAYSTACK_URL +
+          endpoint
+        );
+
+
+      const req =
+        httpsRequest(
+          {
+            hostname:
+              url.hostname,
+
+            port:
+              443,
+
+            path:
+              url.pathname +
+              url.search,
+
+            method,
+
+            headers: {
+
+              Authorization:
+                'Bearer ' +
+                PAYSTACK_SECRET_KEY,
+
+              'Content-Type':
+                'application/json',
+
+              'Content-Length':
+                Buffer.byteLength(
+                  payload
+                )
+
+            }
+
+          }
+        );
+
+
+      let raw = '';
+
+
+      req.on(
+        'data',
+        chunk => {
+
+          raw += chunk;
+
+        }
+      );
+
+
+      req.on(
+        'end',
+        () => {
+
+          let json = null;
+
+
+          try {
+
+            json =
+              JSON.parse(
+                raw || '{}'
+              );
+
+          } catch (e) {
+
+            return reject(
+              new Error(
+                'Invalid Paystack response'
+              )
+            );
+
+          }
+
+
+          if (
+            !json.status
+          ) {
+
+            return reject(
+              new Error(
+                json.message ||
+                'Paystack request failed'
+              )
+            );
+
+          }
+
+
+          resolve(json);
+
+        }
+      );
+
+
+      req.on(
+        'error',
+        reject
+      );
+
+
+      req.end(payload);
+
+    }
+  );
+
+}
+
+
+/*
+Node https is used so this server
+still has no npm dependency requirement.
+*/
+
+const httpsRequest =
+  require('https').request;
+
+
+/*
+=========================================================
+CRASH CALCULATION
+=========================================================
+*/
 
 const crashFrom = h => {
 
@@ -111,40 +616,20 @@ const crashFrom = h => {
       ) / 100
     )
   );
+
 };
 
 
-const r2 = n =>
-  Math.round(n * 100) / 100;
+/*
+=========================================================
+ADMIN CRASH TARGET CONTROL
+=========================================================
+*/
 
-
-/* =========================================================
-   ADMIN CRASH TARGET CONTROL
-   =========================================================
-
-   If there are no custom targets:
-   → original random crash calculation is used.
-
-   If admin enters targets:
-   → targets are used one per round
-   → in the exact order entered
-   → after the last target, the list starts again
-
-   Example:
-
-   2.22
-   1.95
-   3.50
-   5.20
-
-   Round 1 → 2.22x
-   Round 2 → 1.95x
-   Round 3 → 3.50x
-   Round 4 → 5.20x
-   Round 5 → 2.22x
-   ========================================================= */
-
-function nextCrashTarget(seed, nonce) {
+function nextCrashTarget(
+  seed,
+  nonce
+) {
 
   const list =
     Array.isArray(db.customTargets)
@@ -152,12 +637,12 @@ function nextCrashTarget(seed, nonce) {
       : [];
 
 
-  /* No admin targets = original random system */
-
   if (!list.length) {
+
     return crashFrom(
       sha(seed + ':' + nonce)
     );
+
   }
 
 
@@ -200,12 +685,20 @@ function nextCrashTarget(seed, nonce) {
       r2(target)
     )
   );
+
 }
 
 
-/* ========================================================= */
+/*
+=========================================================
+PLAYER LOG
+=========================================================
+*/
 
-const addLog = (p, l) => {
+const addLog = (
+  p,
+  l
+) => {
 
   p.log.unshift(l);
 
@@ -214,16 +707,22 @@ const addLog = (p, l) => {
       p.log.length,
       8
     );
+
 };
 
 
-/* =========================================================
-   TELEGRAM USER VERIFICATION
-   ========================================================= */
+/*
+=========================================================
+TELEGRAM USER VERIFICATION
+=========================================================
+*/
 
 function tgUser(initData) {
 
-  if (!BOT_TOKEN || !initData)
+  if (
+    !BOT_TOKEN ||
+    !initData
+  )
     return null;
 
 
@@ -288,9 +787,13 @@ function tgUser(initData) {
 
 
     return u && {
-      id: u.id,
+
+      id:
+        u.id,
+
       username:
         u.username || '',
+
       name:
         [
           u.first_name,
@@ -298,6 +801,7 @@ function tgUser(initData) {
         ]
         .filter(Boolean)
         .join(' ')
+
     };
 
 
@@ -306,12 +810,15 @@ function tgUser(initData) {
     return null;
 
   }
+
 }
 
 
-/* =========================================================
-   GAME ROUND
-   ========================================================= */
+/*
+=========================================================
+GAME ROUND
+=========================================================
+*/
 
 let R = null;
 
@@ -319,7 +826,8 @@ let R = null;
 function startRound() {
 
   const seed =
-    crypto.randomBytes(16)
+    crypto
+      .randomBytes(16)
       .toString('hex');
 
 
@@ -327,11 +835,6 @@ function startRound() {
 
   db.roundId++;
 
-
-  /*
-    The crash point is fixed here
-    before any bet is placed.
-  */
 
   R = {
 
@@ -356,7 +859,8 @@ function startRound() {
       ),
 
     countEnd:
-      Date.now() + COUNT_MS,
+      Date.now() +
+      COUNT_MS,
 
     flyStart:
       0,
@@ -373,14 +877,20 @@ function startRound() {
   save();
 
   broadcast();
+
 }
 
 
-/* =========================================================
-   CASH OUT
-   ========================================================= */
+/*
+=========================================================
+CASH OUT
+=========================================================
+*/
 
-function cash(t, m) {
+function cash(
+  t,
+  m
+) {
 
   const b =
     R.bets[t];
@@ -453,27 +963,78 @@ function cash(t, m) {
   addLog(
     p,
     {
-      crash: null,
-      amt: b.amt,
-      at: m,
+
+      crash:
+        null,
+
+      amt:
+        b.amt,
+
+      at:
+        m,
+
       profit:
         r2(
           win -
           b.amt
         )
+
     }
   );
+
+
+  /*
+    Record game win in financial ledger.
+  */
+
+  addPlayerTransaction(
+    p,
+    'GAME_WIN',
+    r2(win - b.amt),
+    'Crash game winnings',
+    makeReference('gamewin'),
+    'SUCCESS'
+  );
+
+
+  addFinancialTransaction({
+
+    userId:
+      p.id,
+
+    type:
+      'GAME_WIN',
+
+    amount:
+      r2(win - b.amt),
+
+    direction:
+      'CREDIT',
+
+    status:
+      'SUCCESS',
+
+    description:
+      'Crash game winnings',
+
+    provider:
+      'GAME'
+
+  });
 
 
   save();
 
   broadcast();
+
 }
 
 
-/* =========================================================
-   END ROUND
-   ========================================================= */
+/*
+=========================================================
+END ROUND
+=========================================================
+*/
 
 function endRound() {
 
@@ -488,7 +1049,9 @@ function endRound() {
 
   for (
     const [t, b]
-    of Object.entries(R.bets)
+    of Object.entries(
+      R.bets
+    )
   ) {
 
     const p =
@@ -522,6 +1085,7 @@ function endRound() {
     addLog(
       p,
       {
+
         crash:
           R.crash,
 
@@ -533,8 +1097,45 @@ function endRound() {
 
         profit:
           -b.amt
+
       }
     );
+
+
+    addPlayerTransaction(
+      p,
+      'GAME_LOSS',
+      b.amt,
+      'Crash game loss',
+      makeReference('gameloss'),
+      'SUCCESS'
+    );
+
+
+    addFinancialTransaction({
+
+      userId:
+        p.id,
+
+      type:
+        'GAME_LOSS',
+
+      amount:
+        b.amt,
+
+      direction:
+        'DEBIT',
+
+      status:
+        'SUCCESS',
+
+      description:
+        'Crash game loss',
+
+      provider:
+        'GAME'
+
+    });
 
   }
 
@@ -569,96 +1170,106 @@ function endRound() {
   save();
 
   broadcast();
+
 }
 
 
-/* =========================================================
-   GAME LOOP
-   ========================================================= */
+/*
+=========================================================
+GAME LOOP
+=========================================================
+*/
 
-setInterval(() => {
+setInterval(
+  () => {
 
-  const now =
-    Date.now();
-
-
-  if (
-    R.phase === 'count' &&
-    now >= R.countEnd
-  ) {
-
-    R.phase =
-      'fly';
-
-    R.flyStart =
-      R.countEnd;
-
-    broadcast();
-
-  }
+    const now =
+      Date.now();
 
 
-  if (
-    R.phase === 'fly'
-  ) {
-
-    const m =
-      Math.exp(
-        GROWTH *
-        (
-          now -
-          R.flyStart
-        ) /
-        1000
-      );
-
-
-    for (
-      const [t, b]
-      of Object.entries(R.bets)
+    if (
+      R.phase === 'count' &&
+      now >= R.countEnd
     ) {
 
-      if (
-        !b.at &&
-        b.auto &&
-        b.auto < R.crash &&
-        m >= b.auto
-      ) {
+      R.phase =
+        'fly';
 
-        cash(
-          t,
-          b.auto
-        );
+      R.flyStart =
+        R.countEnd;
 
-      }
+      broadcast();
 
     }
 
 
     if (
-      m >= R.crash
+      R.phase === 'fly'
     ) {
 
-      endRound();
+      const m =
+        Math.exp(
+          GROWTH *
+          (
+            now -
+            R.flyStart
+          ) /
+          1000
+        );
+
+
+      for (
+        const [t, b]
+        of Object.entries(
+          R.bets
+        )
+      ) {
+
+        if (
+          !b.at &&
+          b.auto &&
+          b.auto < R.crash &&
+          m >= b.auto
+        ) {
+
+          cash(
+            t,
+            b.auto
+          );
+
+        }
+
+      }
+
+
+      if (
+        m >= R.crash
+      ) {
+
+        endRound();
+
+      }
+
+
+    } else if (
+      R.phase === 'over' &&
+      now >= R.overEnd
+    ) {
+
+      startRound();
 
     }
 
-
-  } else if (
-    R.phase === 'over' &&
-    now >= R.overEnd
-  ) {
-
-    startRound();
-
-  }
-
-}, 50);
+  },
+  50
+);
 
 
-/* =========================================================
-   CONNECTIONS
-   ========================================================= */
+/*
+=========================================================
+CONNECTIONS
+=========================================================
+*/
 
 const conns =
   new Set();
@@ -716,7 +1327,8 @@ function snap(token) {
       db.history
         .slice(0, 15)
         .map(
-          h => h.crash
+          h =>
+            h.crash
         ),
 
 
@@ -744,6 +1356,7 @@ function snap(token) {
         bet:
           b
             ? {
+
                 amt:
                   b.amt,
 
@@ -752,8 +1365,15 @@ function snap(token) {
 
                 at:
                   b.at
+
               }
-            : null
+            : null,
+
+        email:
+          p.email || '',
+
+        bank:
+          p.bank || null
 
       }
 
@@ -810,9 +1430,11 @@ setInterval(
 );
 
 
-/* =========================================================
-   PLAYER
-   ========================================================= */
+/*
+=========================================================
+PLAYER
+=========================================================
+*/
 
 const okToken =
   t =>
@@ -868,10 +1490,12 @@ function player(
 
         st:
           {
+
             r: 0,
             w: 0,
             best: 0,
             big: 0
+
           },
 
         log:
@@ -887,7 +1511,22 @@ function player(
           Date.now(),
 
         tg:
-          null
+          null,
+
+        email:
+          '',
+
+        bank:
+          null,
+
+        transactions:
+          [],
+
+        deposits:
+          [],
+
+        withdrawals:
+          []
 
       };
 
@@ -903,6 +1542,16 @@ function player(
   if (!p.first)
     p.first =
       Date.now();
+
+
+  if (!Array.isArray(p.transactions))
+    p.transactions = [];
+
+  if (!Array.isArray(p.deposits))
+    p.deposits = [];
+
+  if (!Array.isArray(p.withdrawals))
+    p.withdrawals = [];
 
 
   p.seen =
@@ -938,9 +1587,11 @@ function player(
 }
 
 
-/* =========================================================
-   GAME API
-   ========================================================= */
+/*
+=========================================================
+GAME API
+=========================================================
+*/
 
 const now = () =>
   Math.exp(
@@ -954,6 +1605,12 @@ const now = () =>
 
 
 const api = {
+
+  /*
+  =======================================================
+  BET
+  =======================================================
+  */
 
   bet(
     p,
@@ -1032,13 +1689,21 @@ const api = {
 
     R.bets[t] =
       {
+
         amt,
         auto,
         at: 0
+
       };
 
   },
 
+
+  /*
+  =======================================================
+  CANCEL
+  =======================================================
+  */
 
   cancel(
     p,
@@ -1074,6 +1739,12 @@ const api = {
 
   },
 
+
+  /*
+  =======================================================
+  CASHOUT
+  =======================================================
+  */
 
   cashout(
     p,
@@ -1118,6 +1789,12 @@ const api = {
   },
 
 
+  /*
+  =======================================================
+  RESTORE
+  =======================================================
+  */
+
   restore(
     p,
     t
@@ -1138,6 +1815,12 @@ const api = {
 
   },
 
+
+  /*
+  =======================================================
+  BONUS
+  =======================================================
+  */
 
   bonus(
     p
@@ -1162,14 +1845,889 @@ const api = {
         BONUS
       );
 
+
+    addPlayerTransaction(
+      p,
+      'BONUS',
+      BONUS,
+      'Welcome bonus',
+      makeReference('bonus'),
+      'SUCCESS'
+    );
+
+
+    addFinancialTransaction({
+
+      userId:
+        p.id,
+
+      type:
+        'BONUS',
+
+      amount:
+        BONUS,
+
+      direction:
+        'CREDIT',
+
+      status:
+        'SUCCESS',
+
+      description:
+        'Welcome bonus',
+
+      provider:
+        'SYSTEM'
+
+    });
+
   }
 
 };
 
 
-/* =========================================================
-   HTTP SERVER
-   ========================================================= */
+/*
+=========================================================
+DEPOSIT
+=========================================================
+*/
+
+api.deposit = async function(
+  p,
+  t,
+  b
+) {
+
+  if (!PAYSTACK_SECRET_KEY)
+    return 'Payment system is not configured';
+
+
+  const amount =
+    money(
+      b.amount
+    );
+
+
+  if (
+    amount < 100
+  ) {
+
+    return 'Minimum deposit is ₦100';
+
+  }
+
+
+  const email =
+    String(
+      b.email ||
+      p.email ||
+      ''
+    )
+    .trim()
+    .toLowerCase();
+
+
+  if (
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      .test(email)
+  ) {
+
+    return 'Valid email is required for deposit';
+
+  }
+
+
+  p.email =
+    email;
+
+
+  const reference =
+    makeReference('dep');
+
+
+  try {
+
+    const result =
+      await paystackRequest(
+        'POST',
+        '/transaction/initialize',
+        {
+
+          email,
+
+          amount:
+            nairaToKobo(
+              amount
+            ).toString(),
+
+          currency:
+            'NGN',
+
+          reference,
+
+          metadata:
+            JSON.stringify({
+
+              user_id:
+                p.id,
+
+              player_token:
+                t,
+
+              type:
+                'deposit'
+
+            })
+
+        }
+      );
+
+
+    const item = {
+
+      reference,
+
+      userId:
+        p.id,
+
+      token:
+        t,
+
+      amount,
+
+      amountKobo:
+        nairaToKobo(
+          amount
+        ),
+
+      status:
+        'PENDING',
+
+      provider:
+        'PAYSTACK',
+
+      createdAt:
+        Date.now(),
+
+      authorizationUrl:
+        result.data.authorization_url
+
+    };
+
+
+    db.deposits[
+      reference
+    ] =
+      item;
+
+
+    p.deposits.unshift(
+      reference
+    );
+
+
+    p.deposits =
+      p.deposits.slice(
+        0,
+        100
+      );
+
+
+    addFinancialTransaction({
+
+      userId:
+        p.id,
+
+      type:
+        'DEPOSIT',
+
+      amount,
+
+      direction:
+        'CREDIT',
+
+      status:
+        'PENDING',
+
+      description:
+        'Deposit initiated',
+
+      provider:
+        'PAYSTACK',
+
+      providerReference:
+        reference,
+
+      reference
+
+    });
+
+
+    save();
+
+
+    return JSON.stringify({
+
+      deposit: true,
+
+      reference,
+
+      authorizationUrl:
+        result.data.authorization_url
+
+    });
+
+
+  } catch (e) {
+
+    return (
+      'Deposit initialization failed: ' +
+      e.message
+    );
+
+  }
+
+};
+
+
+/*
+=========================================================
+VERIFY DEPOSIT
+=========================================================
+*/
+
+api.verifyDeposit = async function(
+  p,
+  t,
+  b
+) {
+
+  const reference =
+    String(
+      b.reference || ''
+    );
+
+
+  if (!reference)
+    return 'Deposit reference is required';
+
+
+  const dep =
+    db.deposits[
+      reference
+    ];
+
+
+  if (!dep)
+    return 'Deposit not found';
+
+
+  if (
+    dep.userId !== p.id
+  ) {
+
+    return 'Deposit does not belong to this account';
+
+  }
+
+
+  /*
+    Prevent double credit.
+  */
+
+  if (
+    dep.status === 'SUCCESS'
+  ) {
+
+    return JSON.stringify({
+
+      verified: true,
+
+      alreadyCredited: true,
+
+      amount:
+        dep.amount
+
+    });
+
+  }
+
+
+  try {
+
+    const result =
+      await paystackRequest(
+        'GET',
+        '/transaction/verify/' +
+        encodeURIComponent(
+          reference
+        )
+      );
+
+
+    const data =
+      result.data;
+
+
+    if (
+      data.status !== 'success'
+    ) {
+
+      dep.status =
+        String(
+          data.status ||
+          'PENDING'
+        ).toUpperCase();
+
+      save();
+
+
+      return (
+        'Payment is not successful yet'
+      );
+
+    }
+
+
+    /*
+      Verify amount as well.
+    */
+
+    if (
+      Number(data.amount) !==
+      Number(dep.amountKobo)
+    ) {
+
+      dep.status =
+        'AMOUNT_MISMATCH';
+
+      save();
+
+      return 'Payment amount mismatch';
+
+    }
+
+
+    /*
+      Credit exactly once.
+    */
+
+    if (
+      dep.status !== 'SUCCESS'
+    ) {
+
+      p.bal =
+        r2(
+          p.bal +
+          dep.amount
+        );
+
+
+      dep.status =
+        'SUCCESS';
+
+
+      dep.paidAt =
+        Date.now();
+
+
+      dep.providerId =
+        data.id;
+
+
+      addPlayerTransaction(
+
+        p,
+
+        'DEPOSIT',
+
+        dep.amount,
+
+        'Verified Paystack deposit',
+
+        reference,
+
+        'SUCCESS'
+
+      );
+
+
+      addFinancialTransaction({
+
+        userId:
+          p.id,
+
+        type:
+          'DEPOSIT',
+
+        amount:
+          dep.amount,
+
+        direction:
+          'CREDIT',
+
+        status:
+          'SUCCESS',
+
+        description:
+          'Deposit credited',
+
+        provider:
+          'PAYSTACK',
+
+        providerReference:
+          reference,
+
+        reference
+
+      });
+
+
+      save();
+
+      broadcast();
+
+    }
+
+
+    return JSON.stringify({
+
+      verified: true,
+
+      amount:
+        dep.amount,
+
+      balance:
+        p.bal
+
+    });
+
+
+  } catch (e) {
+
+    return (
+      'Deposit verification failed: ' +
+      e.message
+    );
+
+  }
+
+};
+
+
+/*
+=========================================================
+GET BANKS
+=========================================================
+*/
+
+api.banks = async function(
+  p,
+  t,
+  b
+) {
+
+  try {
+
+    const result =
+      await paystackRequest(
+        'GET',
+        '/bank?country=nigeria&currency=NGN&perPage=100'
+      );
+
+
+    return JSON.stringify({
+
+      banks:
+        result.data || []
+
+    });
+
+
+  } catch (e) {
+
+    return (
+      'Could not load banks: ' +
+      e.message
+    );
+
+  }
+
+};
+
+
+/*
+=========================================================
+SAVE BANK DETAILS
+=========================================================
+*/
+
+api.saveBank = async function(
+  p,
+  t,
+  b
+) {
+
+  const bankCode =
+    String(
+      b.bankCode || ''
+    ).trim();
+
+
+  const accountNumber =
+    String(
+      b.accountNumber || ''
+    ).trim();
+
+
+  const accountName =
+    String(
+      b.accountName || ''
+    ).trim();
+
+
+  if (
+    !bankCode ||
+    !/^\d{10}$/.test(
+      accountNumber
+    )
+  ) {
+
+    return 'Valid bank code and 10-digit account number are required';
+
+  }
+
+
+  if (
+    accountName.length < 2
+  ) {
+
+    return 'Account name is required';
+
+  }
+
+
+  p.bank = {
+
+    bankCode,
+
+    accountNumber,
+
+    accountName:
+
+      accountName
+        .slice(
+          0,
+          100
+        ),
+
+    bankName:
+      String(
+        b.bankName || ''
+      ).slice(
+        0,
+        100
+      ),
+
+    updatedAt:
+      Date.now()
+
+  };
+
+
+  save();
+
+  return JSON.stringify({
+
+    saved: true,
+
+    bank:
+      p.bank
+
+  });
+
+};
+
+
+/*
+=========================================================
+WITHDRAWAL REQUEST
+=========================================================
+*/
+
+api.withdraw = async function(
+  p,
+  t,
+  b
+) {
+
+  const amount =
+    money(
+      b.amount
+    );
+
+
+  if (
+    amount < WITHDRAW_MIN
+  ) {
+
+    return (
+      'Minimum withdrawal is ₦' +
+      WITHDRAW_MIN.toLocaleString()
+    );
+
+  }
+
+
+  if (
+    amount > WITHDRAW_MAX
+  ) {
+
+    return (
+      'Maximum withdrawal is ₦' +
+      WITHDRAW_MAX.toLocaleString()
+    );
+
+  }
+
+
+  if (
+    amount > p.bal
+  ) {
+
+    return 'Not enough balance';
+
+  }
+
+
+  if (
+    !p.bank ||
+    !p.bank.bankCode ||
+    !p.bank.accountNumber
+  ) {
+
+    return 'Add your bank account first';
+
+  }
+
+
+  /*
+    Only one pending withdrawal per user.
+  */
+
+  const existing =
+    Object.values(
+      db.withdrawals
+    )
+    .find(
+      w =>
+        w.userId === p.id &&
+        (
+          w.status === 'PENDING' ||
+          w.status === 'PROCESSING'
+        )
+    );
+
+
+  if (existing) {
+
+    return 'You already have a pending withdrawal';
+
+  }
+
+
+  /*
+    Reserve the money immediately.
+  */
+
+  p.bal =
+    r2(
+      p.bal -
+      amount
+    );
+
+
+  const reference =
+    makeReference('wd');
+
+
+  const withdrawal = {
+
+    reference,
+
+    userId:
+      p.id,
+
+    token:
+      t,
+
+    amount,
+
+    amountKobo:
+      nairaToKobo(
+        amount
+      ),
+
+    bankCode:
+      p.bank.bankCode,
+
+    accountNumber:
+      p.bank.accountNumber,
+
+    accountName:
+      p.bank.accountName,
+
+    bankName:
+      p.bank.bankName || '',
+
+    recipientCode:
+      '',
+
+    status:
+      'PENDING',
+
+    provider:
+      'PAYSTACK',
+
+    createdAt:
+      Date.now(),
+
+    paidAt:
+      0,
+
+    failedAt:
+      0
+
+  };
+
+
+  db.withdrawals[
+    reference
+  ] =
+    withdrawal;
+
+
+  p.withdrawals.unshift(
+    reference
+  );
+
+
+  p.withdrawals =
+    p.withdrawals.slice(
+      0,
+      100
+    );
+
+
+  addPlayerTransaction(
+
+    p,
+
+    'WITHDRAWAL',
+
+    amount,
+
+    'Withdrawal request',
+
+    reference,
+
+    'PENDING'
+
+  );
+
+
+  addFinancialTransaction({
+
+    userId:
+      p.id,
+
+    type:
+      'WITHDRAWAL',
+
+    amount,
+
+    direction:
+      'DEBIT',
+
+    status:
+      'PENDING',
+
+    description:
+      'Withdrawal requested',
+
+    provider:
+      'PAYSTACK',
+
+    providerReference:
+      reference,
+
+    reference
+
+  });
+
+
+  save();
+
+  broadcast();
+
+
+  return JSON.stringify({
+
+    withdrawal: true,
+
+    reference,
+
+    amount,
+
+    status:
+      'PENDING'
+
+  });
+
+};
+
+
+/*
+=========================================================
+PLAYER TRANSACTIONS
+=========================================================
+*/
+
+api.transactions = function(
+  p
+) {
+
+  return JSON.stringify({
+
+    transactions:
+      p.transactions || [],
+
+    deposits:
+      (p.deposits || [])
+        .map(
+          ref =>
+            db.deposits[ref]
+        )
+        .filter(Boolean),
+
+    withdrawals:
+      (p.withdrawals || [])
+        .map(
+          ref =>
+            db.withdrawals[ref]
+        )
+        .filter(Boolean)
+
+  });
+
+};
+
+
+/*
+=========================================================
+HTTP SERVER
+=========================================================
+*/
 
 http.createServer(
   (req, res) => {
@@ -1181,9 +2739,11 @@ http.createServer(
       );
 
 
-    /* =====================================================
-       PLAYER EVENTS
-       ===================================================== */
+    /*
+    =======================================================
+    PLAYER EVENTS
+    =======================================================
+    */
 
     if (
       u.pathname ===
@@ -1222,6 +2782,7 @@ http.createServer(
       res.writeHead(
         200,
         {
+
           'Content-Type':
             'text/event-stream',
 
@@ -1233,14 +2794,17 @@ http.createServer(
 
           'X-Accel-Buffering':
             'no'
+
         }
       );
 
 
       const c =
         {
+
           res,
           token
+
         };
 
 
@@ -1253,8 +2817,10 @@ http.createServer(
 
           conns.delete(c);
 
+
           const q =
             db.players[token];
+
 
           if (q)
             q.seen =
@@ -1269,9 +2835,11 @@ http.createServer(
     }
 
 
-    /* =====================================================
-       PLAYER API
-       ===================================================== */
+    /*
+    =======================================================
+    PLAYER API
+    =======================================================
+    */
 
     if (
       req.method === 'POST' &&
@@ -1289,8 +2857,9 @@ http.createServer(
 
           d += x;
 
+
           if (
-            d.length > 2000
+            d.length > 10000
           ) {
 
             req.destroy();
@@ -1303,9 +2872,10 @@ http.createServer(
 
       return req.on(
         'end',
-        () => {
+        async () => {
 
           let b = {};
+
 
           try {
 
@@ -1334,46 +2904,177 @@ http.createServer(
             ];
 
 
-          const err =
-            !fn || !p
-              ? 'Unknown request'
-              : fn(
-                  p,
-                  b.token,
-                  b
-                );
+          if (
+            !fn ||
+            !p
+          ) {
+
+            res.writeHead(
+              200,
+              {
+                'Content-Type':
+                  'application/json'
+              }
+            );
 
 
-          if (!err) {
+            return res.end(
+              JSON.stringify({
+
+                ok:
+                  false,
+
+                error:
+                  'Unknown request'
+
+              })
+            );
+
+          }
+
+
+          try {
+
+            const result =
+              await fn(
+                p,
+                b.token,
+                b
+              );
+
+
+            /*
+              Functions that return a string beginning
+              with JSON are treated as structured success.
+            */
+
+            let parsed =
+              null;
+
+
+            if (
+              typeof result === 'string'
+            ) {
+
+              try {
+
+                parsed =
+                  JSON.parse(
+                    result
+                  );
+
+              } catch (e) {}
+
+            }
+
+
+            if (
+              parsed
+            ) {
+
+              /*
+                Some JSON responses contain an error
+                property. Otherwise return as success.
+              */
+
+              res.writeHead(
+                200,
+                {
+                  'Content-Type':
+                    'application/json'
+                }
+              );
+
+
+              return res.end(
+                JSON.stringify({
+
+                  ok:
+                    !parsed.error,
+
+                  ...parsed
+
+                })
+              );
+
+            }
+
+
+            if (result) {
+
+              res.writeHead(
+                200,
+                {
+                  'Content-Type':
+                    'application/json'
+                }
+              );
+
+
+              return res.end(
+                JSON.stringify({
+
+                  ok:
+                    false,
+
+                  error:
+                    result
+
+                })
+              );
+
+            }
+
 
             save();
 
             broadcast();
 
+
+            res.writeHead(
+              200,
+              {
+                'Content-Type':
+                  'application/json'
+              }
+            );
+
+
+            return res.end(
+              JSON.stringify({
+
+                ok:
+                  true
+
+              })
+            );
+
+
+          } catch (e) {
+
+            res.writeHead(
+              500,
+              {
+                'Content-Type':
+                  'application/json'
+              }
+            );
+
+
+            return res.end(
+              JSON.stringify({
+
+                ok:
+                  false,
+
+                error:
+                  e.message ||
+                  'Server error'
+
+              })
+            );
+
           }
-
-
-          res.writeHead(
-            200,
-            {
-              'Content-Type':
-                'application/json'
-            }
-          );
-
-
-          res.end(
-            JSON.stringify(
-              err
-                ? {
-                    ok: false,
-                    error: err
-                  }
-                : {
-                    ok: true
-                  }
-            )
-          );
 
         }
       );
@@ -1381,9 +3082,11 @@ http.createServer(
     }
 
 
-    /* =====================================================
-       ADMIN PANEL
-       ===================================================== */
+    /*
+    =======================================================
+    ADMIN PANEL
+    =======================================================
+    */
 
     if (
       u.pathname ===
@@ -1400,8 +3103,10 @@ http.createServer(
           res.writeHead(
             e ? 500 : 200,
             {
+
               'Content-Type':
                 'text/html; charset=utf-8'
+
             }
           );
 
@@ -1418,9 +3123,11 @@ http.createServer(
     }
 
 
-    /* =====================================================
-       ADMIN API
-       ===================================================== */
+    /*
+    =======================================================
+    ADMIN API
+    =======================================================
+    */
 
     if (
       req.method === 'POST' &&
@@ -1438,8 +3145,9 @@ http.createServer(
 
           d += x;
 
+
           if (
-            d.length > 2000
+            d.length > 20000
           ) {
 
             req.destroy();
@@ -1452,7 +3160,7 @@ http.createServer(
 
       return req.on(
         'end',
-        () => {
+        async () => {
 
           let b = {};
 
@@ -1485,8 +3193,10 @@ http.createServer(
               res.writeHead(
                 code,
                 {
+
                   'Content-Type':
                     'application/json'
+
                 }
               );
 
@@ -1498,19 +3208,36 @@ http.createServer(
             };
 
 
+          const keyA =
+            h(
+              b.key
+            );
+
+          const keyB =
+            h(
+              ADMIN_KEY
+            );
+
+
           if (
+            keyA.length !==
+            keyB.length ||
             !crypto.timingSafeEqual(
-              h(b.key),
-              h(ADMIN_KEY)
+              keyA,
+              keyB
             )
           ) {
 
             return out(
               401,
               {
-                ok: false,
+
+                ok:
+                  false,
+
                 error:
                   'Wrong admin key'
+
               }
             );
 
@@ -1523,9 +3250,11 @@ http.createServer(
             );
 
 
-          /* =================================================
-             ADMIN STATE
-             ================================================= */
+          /*
+          =================================================
+          ADMIN STATE
+          =================================================
+          */
 
           if (
             act === 'state'
@@ -1537,7 +3266,8 @@ http.createServer(
                   ...conns
                 ]
                 .map(
-                  c => c.token
+                  c =>
+                    c.token
                 )
               );
 
@@ -1558,6 +3288,12 @@ http.createServer(
                   tg:
                     p.tg,
 
+                  email:
+                    p.email || '',
+
+                  bank:
+                    p.bank || null,
+
                   bal:
                     p.bal,
 
@@ -1576,6 +3312,7 @@ http.createServer(
                   bet:
                     R.bets[t]
                       ? {
+
                           amt:
                             R.bets[t].amt,
 
@@ -1584,6 +3321,7 @@ http.createServer(
 
                           at:
                             R.bets[t].at
+
                         }
                       : null,
 
@@ -1603,7 +3341,9 @@ http.createServer(
             return out(
               200,
               {
-                ok: true,
+
+                ok:
+                  true,
 
                 online:
                   on.size,
@@ -1613,6 +3353,7 @@ http.createServer(
 
                 round:
                   {
+
                     id:
                       R.id,
 
@@ -1623,7 +3364,67 @@ http.createServer(
                       Object.keys(
                         R.bets
                       ).length
+
                   },
+
+                /*
+                  Financial summary
+                */
+
+                payoutFund:
+                  koboToNaira(
+                    db.payoutFundKobo
+                  ),
+
+                totalDeposits:
+                  r2(
+                    Object.values(
+                      db.deposits
+                    )
+                    .filter(
+                      d =>
+                        d.status ===
+                        'SUCCESS'
+                    )
+                    .reduce(
+                      (a, d) =>
+                        a +
+                        Number(
+                          d.amount
+                        ),
+                      0
+                    )
+                  ),
+
+                totalWithdrawals:
+                  r2(
+                    Object.values(
+                      db.withdrawals
+                    )
+                    .filter(
+                      w =>
+                        w.status ===
+                        'SUCCESS'
+                    )
+                    .reduce(
+                      (a, w) =>
+                        a +
+                        Number(
+                          w.amount
+                        ),
+                      0
+                    )
+                  ),
+
+                pendingWithdrawals:
+                  Object.values(
+                    db.withdrawals
+                  )
+                  .filter(
+                    w =>
+                      w.status ===
+                      'PENDING'
+                  ).length,
 
                 players
 
@@ -1633,9 +3434,11 @@ http.createServer(
           }
 
 
-          /* =================================================
-             RESTORE PLAYER
-             ================================================= */
+          /*
+          =================================================
+          RESTORE PLAYER
+          =================================================
+          */
 
           if (
             act === 'restore'
@@ -1656,9 +3459,13 @@ http.createServer(
               return out(
                 404,
                 {
-                  ok: false,
+
+                  ok:
+                    false,
+
                   error:
                     'Player not found'
+
                 }
               );
 
@@ -1680,32 +3487,21 @@ http.createServer(
             return out(
               200,
               {
-                ok: true
+
+                ok:
+                  true
+
               }
             );
 
           }
 
 
-          /* =================================================
-             CRASH TARGET CONTROL
-             =================================================
-
-             Admin Panel sends:
-
-             {
-               "targets": [
-                 2.22,
-                 1.95,
-                 3.50,
-                 5.20
-               ]
-             }
-
-             The targets are used only for FUTURE rounds.
-
-             The current round is not changed.
-             ================================================= */
+          /*
+          =================================================
+          CRASH TARGET CONTROL
+          =================================================
+          */
 
           if (
             act === 'targets'
@@ -1720,9 +3516,13 @@ http.createServer(
               return out(
                 400,
                 {
-                  ok: false,
+
+                  ok:
+                    false,
+
                   error:
                     'targets must be an array'
+
                 }
               );
 
@@ -1752,9 +3552,13 @@ http.createServer(
               return out(
                 400,
                 {
-                  ok: false,
+
+                  ok:
+                    false,
+
                   error:
                     'Each target must be between 1.01x and 1000x'
+
                 }
               );
 
@@ -1780,7 +3584,8 @@ http.createServer(
               200,
               {
 
-                ok: true,
+                ok:
+                  true,
 
                 targets:
                   db.customTargets,
@@ -1802,14 +3607,1123 @@ http.createServer(
           }
 
 
-          /* ================================================= */
+          /*
+          =================================================
+          ADMIN FINANCIAL STATE
+          =================================================
+          */
+
+          if (
+            act ===
+            'financial-state'
+          ) {
+
+            return out(
+              200,
+              {
+
+                ok:
+                  true,
+
+                payoutFund:
+                  koboToNaira(
+                    db.payoutFundKobo
+                  ),
+
+                payoutFundKobo:
+                  db.payoutFundKobo,
+
+                deposits:
+                  Object.values(
+                    db.deposits
+                  )
+                  .slice(
+                    0,
+                    200
+                  ),
+
+                withdrawals:
+                  Object.values(
+                    db.withdrawals
+                  )
+                  .slice(
+                    0,
+                    200
+                  ),
+
+                transactions:
+                  db.financialTransactions
+                    .slice(
+                      0,
+                      500
+                    )
+
+              }
+            );
+
+          }
+
+
+          /*
+          =================================================
+          ADD PAYOUT FUND
+          =================================================
+
+          No ₦10m limit.
+
+          Example:
+          10000000
+          50000000
+          100000000
+
+          The amount is recorded as an admin ledger entry.
+          It does NOT magically create money at Paystack.
+          =================================================
+          */
+
+          if (
+            act ===
+            'payout-fund-add'
+          ) {
+
+            const amount =
+              money(
+                b.amount
+              );
+
+
+            if (
+              amount <= 0
+            ) {
+
+              return out(
+                400,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'Invalid funding amount'
+
+                }
+              );
+
+            }
+
+
+            const kobo =
+              nairaToKobo(
+                amount
+              );
+
+
+            if (
+              !Number.isSafeInteger(
+                db.payoutFundKobo +
+                kobo
+              )
+            ) {
+
+              return out(
+                400,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'Funding amount is too large'
+
+                }
+              );
+
+            }
+
+
+            db.payoutFundKobo +=
+              kobo;
+
+
+            const reference =
+              String(
+                b.reference ||
+                makeReference(
+                  'fund'
+                )
+              );
+
+
+            addFinancialTransaction({
+
+              userId:
+                null,
+
+              type:
+                'PAYOUT_FUND',
+
+              amount,
+
+              direction:
+                'CREDIT',
+
+              status:
+                'SUCCESS',
+
+              description:
+                b.description ||
+                'Admin payout funding',
+
+              provider:
+                'ADMIN_LEDGER',
+
+              reference
+
+            });
+
+
+            save();
+
+
+            return out(
+              200,
+              {
+
+                ok:
+                  true,
+
+                reference,
+
+                added:
+                  amount,
+
+                payoutFund:
+                  koboToNaira(
+                    db.payoutFundKobo
+                  )
+
+              }
+            );
+
+          }
+
+
+          /*
+          =================================================
+          REMOVE PAYOUT FUND
+          =================================================
+          */
+
+          if (
+            act ===
+            'payout-fund-remove'
+          ) {
+
+            const amount =
+              money(
+                b.amount
+              );
+
+
+            if (
+              amount <= 0
+            ) {
+
+              return out(
+                400,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'Invalid amount'
+
+                }
+              );
+
+            }
+
+
+            const kobo =
+              nairaToKobo(
+                amount
+              );
+
+
+            if (
+              kobo >
+              db.payoutFundKobo
+            ) {
+
+              return out(
+                400,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'Amount exceeds payout-fund balance'
+
+                }
+              );
+
+            }
+
+
+            db.payoutFundKobo -=
+              kobo;
+
+
+            addFinancialTransaction({
+
+              type:
+                'PAYOUT_FUND_REMOVE',
+
+              amount,
+
+              direction:
+                'DEBIT',
+
+              status:
+                'SUCCESS',
+
+              description:
+                b.description ||
+                'Admin removed payout funds',
+
+              provider:
+                'ADMIN_LEDGER',
+
+              reference:
+                String(
+                  b.reference ||
+                  makeReference(
+                    'fundremove'
+                  )
+                )
+
+            });
+
+
+            save();
+
+
+            return out(
+              200,
+              {
+
+                ok:
+                  true,
+
+                removed:
+                  amount,
+
+                payoutFund:
+                  koboToNaira(
+                    db.payoutFundKobo
+                  )
+
+              }
+            );
+
+          }
+
+
+          /*
+          =================================================
+          ADMIN LIST DEPOSITS
+          =================================================
+          */
+
+          if (
+            act ===
+            'deposits'
+          ) {
+
+            return out(
+              200,
+              {
+
+                ok:
+                  true,
+
+                deposits:
+                  Object.values(
+                    db.deposits
+                  )
+                  .sort(
+                    (a, b) =>
+                      b.createdAt -
+                      a.createdAt
+                  )
+                  .slice(
+                    0,
+                    500
+                  )
+
+              }
+            );
+
+          }
+
+
+          /*
+          =================================================
+          ADMIN LIST WITHDRAWALS
+          =================================================
+          */
+
+          if (
+            act ===
+            'withdrawals'
+          ) {
+
+            return out(
+              200,
+              {
+
+                ok:
+                  true,
+
+                withdrawals:
+                  Object.values(
+                    db.withdrawals
+                  )
+                  .sort(
+                    (a, b) =>
+                      b.createdAt -
+                      a.createdAt
+                  )
+                  .slice(
+                    0,
+                    500
+                  )
+
+              }
+            );
+
+          }
+
+
+          /*
+          =================================================
+          ADMIN TRANSACTIONS
+          =================================================
+          */
+
+          if (
+            act ===
+            'transactions'
+          ) {
+
+            return out(
+              200,
+              {
+
+                ok:
+                  true,
+
+                transactions:
+                  db.financialTransactions
+                    .slice(
+                      0,
+                      1000
+                    )
+
+              }
+            );
+
+          }
+
+
+          /*
+          =================================================
+          PAY WITH PAYSTACK
+          =================================================
+          */
+
+          if (
+            act ===
+            'withdrawal-pay'
+          ) {
+
+            if (
+              !PAYSTACK_SECRET_KEY
+            ) {
+
+              return out(
+                500,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'PAYSTACK_SECRET_KEY is missing'
+
+                }
+              );
+
+            }
+
+
+            const reference =
+              String(
+                b.reference ||
+                ''
+              );
+
+
+            const w =
+              db.withdrawals[
+                reference
+              ];
+
+
+            if (!w) {
+
+              return out(
+                404,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'Withdrawal not found'
+
+                }
+              );
+
+            }
+
+
+            if (
+              w.status !==
+              'PENDING'
+            ) {
+
+              return out(
+                400,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'Withdrawal is already being processed or completed'
+
+                }
+              );
+
+            }
+
+
+            /*
+              Check payout-fund ledger.
+            */
+
+            if (
+              w.amountKobo >
+              db.payoutFundKobo
+            ) {
+
+              return out(
+                400,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'Insufficient payout-fund balance'
+
+                }
+              );
+
+            }
+
+
+            try {
+
+              /*
+              Create Paystack transfer recipient.
+              Paystack validates the destination bank
+              account as part of recipient creation.
+              */
+
+              const recipient =
+                await paystackRequest(
+                  'POST',
+                  '/transferrecipient',
+                  {
+
+                    type:
+                      'nuban',
+
+                    name:
+                      w.accountName,
+
+                    account_number:
+                      w.accountNumber,
+
+                    bank_code:
+                      w.bankCode,
+
+                    currency:
+                      'NGN',
+
+                    description:
+                      'Withdrawal ' +
+                      reference
+
+                  }
+                );
+
+
+              const recipientCode =
+                recipient.data.recipient_code;
+
+
+              w.recipientCode =
+                recipientCode;
+
+
+              /*
+              Initiate transfer.
+              Paystack amount is in kobo.
+              */
+
+              const transfer =
+                await paystackRequest(
+                  'POST',
+                  '/transfer',
+                  {
+
+                    source:
+                      'balance',
+
+                    amount:
+                      w.amountKobo,
+
+                    recipient:
+                      recipientCode,
+
+                    reference,
+
+                    reason:
+                      'User withdrawal',
+
+                    currency:
+                      'NGN'
+
+                  }
+                );
+
+
+              w.status =
+                'PROCESSING';
+
+
+              w.providerReference =
+                reference;
+
+
+              w.transferId =
+                transfer.data &&
+                transfer.data.id;
+
+
+              /*
+                Reserve the payout ledger amount.
+              */
+
+              db.payoutFundKobo -=
+                w.amountKobo;
+
+
+              addFinancialTransaction({
+
+                userId:
+                  w.userId,
+
+                type:
+                  'PAYOUT',
+
+                amount:
+                  w.amount,
+
+                direction:
+                  'DEBIT',
+
+                status:
+                  'PROCESSING',
+
+                description:
+                  'Paystack withdrawal transfer',
+
+                provider:
+                  'PAYSTACK',
+
+                providerReference:
+                  reference,
+
+                reference
+
+              });
+
+
+              save();
+
+
+              return out(
+                200,
+                {
+
+                  ok:
+                    true,
+
+                  status:
+                    w.status,
+
+                  reference,
+
+                  payoutFund:
+                    koboToNaira(
+                      db.payoutFundKobo
+                    )
+
+                }
+              );
+
+
+            } catch (e) {
+
+              /*
+                If transfer failed before money was
+                removed from the payout ledger, the ledger
+                remains unchanged.
+              */
+
+              return out(
+                400,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    e.message ||
+                    'Payout failed'
+
+                }
+              );
+
+            }
+
+          }
+
+
+          /*
+          =================================================
+          VERIFY PAYOUT
+          =================================================
+          */
+
+          if (
+            act ===
+            'withdrawal-verify'
+          ) {
+
+            if (
+              !PAYSTACK_SECRET_KEY
+            ) {
+
+              return out(
+                500,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'PAYSTACK_SECRET_KEY is missing'
+
+                }
+              );
+
+            }
+
+
+            const reference =
+              String(
+                b.reference ||
+                ''
+              );
+
+
+            const w =
+              db.withdrawals[
+                reference
+              ];
+
+
+            if (!w) {
+
+              return out(
+                404,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    'Withdrawal not found'
+
+                }
+              );
+
+            }
+
+
+            if (
+              w.status ===
+              'SUCCESS'
+            ) {
+
+              return out(
+                200,
+                {
+
+                  ok:
+                    true,
+
+                  status:
+                    'SUCCESS'
+
+                }
+              );
+
+            }
+
+
+            try {
+
+              const result =
+                await paystackRequest(
+                  'GET',
+                  '/transfer/verify/' +
+                  encodeURIComponent(
+                    reference
+                  )
+                );
+
+
+              const status =
+                String(
+                  result.data.status ||
+                  ''
+                ).toLowerCase();
+
+
+              if (
+                status ===
+                'success'
+              ) {
+
+                w.status =
+                  'SUCCESS';
+
+
+                w.paidAt =
+                  Date.now();
+
+
+                /*
+                  Mark matching player withdrawal.
+                */
+
+                const p =
+                  Object.values(
+                    db.players
+                  )
+                  .find(
+                    x =>
+                      x.id ===
+                      w.userId
+                  );
+
+
+                if (p) {
+
+                  addPlayerTransaction(
+
+                    p,
+
+                    'WITHDRAWAL',
+
+                    w.amount,
+
+                    'Withdrawal paid',
+
+                    reference,
+
+                    'SUCCESS'
+
+                  );
+
+                }
+
+
+                const tx =
+                  db.financialTransactions
+                    .find(
+                      x =>
+                        x.reference ===
+                        reference &&
+                        x.type ===
+                        'PAYOUT'
+                    );
+
+
+                if (tx) {
+
+                  tx.status =
+                    'SUCCESS';
+
+                  tx.updatedAt =
+                    Date.now();
+
+                }
+
+
+                save();
+
+                broadcast();
+
+
+                return out(
+                  200,
+                  {
+
+                    ok:
+                      true,
+
+                    status:
+                      'SUCCESS',
+
+                    reference
+
+                  }
+                );
+
+              }
+
+
+              if (
+                status ===
+                'failed' ||
+                status ===
+                'reversed'
+              ) {
+
+                /*
+                  Return the reserved payout money
+                  to the payout-fund ledger.
+                */
+
+                db.payoutFundKobo +=
+                  w.amountKobo;
+
+
+                w.status =
+                  'FAILED';
+
+
+                w.failedAt =
+                  Date.now();
+
+
+                const p =
+                  Object.values(
+                    db.players
+                  )
+                  .find(
+                    x =>
+                      x.id ===
+                      w.userId
+                  );
+
+
+                if (p) {
+
+                  /*
+                    Return reserved user money.
+                  */
+
+                  p.bal =
+                    r2(
+                      p.bal +
+                      w.amount
+                    );
+
+
+                  addPlayerTransaction(
+
+                    p,
+
+                    'WITHDRAWAL_REFUND',
+
+                    w.amount,
+
+                    'Failed withdrawal refunded',
+
+                    reference,
+
+                    'SUCCESS'
+
+                  );
+
+                }
+
+
+                const tx =
+                  db.financialTransactions
+                    .find(
+                      x =>
+                        x.reference ===
+                        reference &&
+                        x.type ===
+                        'PAYOUT'
+                    );
+
+
+                if (tx) {
+
+                  tx.status =
+                    'FAILED';
+
+                  tx.updatedAt =
+                    Date.now();
+
+                }
+
+
+                addFinancialTransaction({
+
+                  userId:
+                    w.userId,
+
+                  type:
+                    'WITHDRAWAL_REFUND',
+
+                  amount:
+                    w.amount,
+
+                  direction:
+                    'CREDIT',
+
+                  status:
+                    'SUCCESS',
+
+                  description:
+                    'Failed payout returned',
+
+                  provider:
+                    'PAYSTACK',
+
+                  providerReference:
+                    reference,
+
+                  reference:
+                    makeReference(
+                      'refund'
+                    )
+
+                });
+
+
+                save();
+
+                broadcast();
+
+
+                return out(
+                  200,
+                  {
+
+                    ok:
+                      true,
+
+                    status:
+                      'FAILED',
+
+                    refunded:
+                      true,
+
+                    reference
+
+                  }
+                );
+
+              }
+
+
+              return out(
+                200,
+                {
+
+                  ok:
+                    true,
+
+                  status:
+                    status ||
+                    'PROCESSING',
+
+                  reference
+
+                }
+              );
+
+
+            } catch (e) {
+
+              return out(
+                400,
+                {
+
+                  ok:
+                    false,
+
+                  error:
+                    e.message
+
+                }
+              );
+
+            }
+
+          }
+
+
+          /*
+          =================================================
+          UNKNOWN ADMIN REQUEST
+          =================================================
+          */
 
           return out(
             404,
             {
-              ok: false,
+
+              ok:
+                false,
+
               error:
                 'Unknown request'
+
             }
           );
 
@@ -1819,9 +4733,11 @@ http.createServer(
     }
 
 
-    /* =====================================================
-       HISTORY
-       ===================================================== */
+    /*
+    =======================================================
+    HISTORY
+    =======================================================
+    */
 
     if (
       u.pathname ===
@@ -1831,8 +4747,10 @@ http.createServer(
       res.writeHead(
         200,
         {
+
           'Content-Type':
             'application/json'
+
         }
       );
 
@@ -1846,9 +4764,11 @@ http.createServer(
     }
 
 
-    /* =====================================================
-       MAIN GAME
-       ===================================================== */
+    /*
+    =======================================================
+    MAIN GAME
+    =======================================================
+    */
 
     fs.readFile(
       path.join(
@@ -1873,8 +4793,10 @@ http.createServer(
         res.writeHead(
           200,
           {
+
             'Content-Type':
               'text/html; charset=utf-8'
+
           }
         );
 
@@ -1898,6 +4820,12 @@ http.createServer(
 );
 
 
+/*
+=========================================================
+START GAME
+=========================================================
+*/
+
 startRound();
 
 
@@ -1906,4 +4834,22 @@ console.log(
     ? 'Admin panel: /admin (key from ADMIN_KEY)'
     : 'Admin panel: /admin   key: ' +
       ADMIN_KEY
+);
+
+
+console.log(
+  PAYSTACK_SECRET_KEY
+    ? 'Paystack payment system: configured'
+    : 'Paystack payment system: NOT configured'
+);
+
+
+console.log(
+  'Withdrawal minimum: ₦' +
+  WITHDRAW_MIN.toLocaleString()
+);
+
+
+console.log(
+  'Payout funding has no ₦10,000,000 application limit.'
 );
