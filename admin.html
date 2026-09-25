@@ -1,2694 +1,1022 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-
-<title>Crash Admin</title>
-
-<style>
-:root{
-  --bg:#020008;
-  --panel:#0b0320;
-  --line:#5c20a0;
-  --green:#19e96f;
-  --red:#ff304f;
-  --gold:#ffd02d;
-  --blue:#38a8ff;
-  --muted:#a7a0c5;
-  --text:#fff;
-
-  box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px);
-  padding-bottom:env(safe-area-inset-bottom,0px)
-}
-
-*{
-  box-sizing:border-box
-}
-
-body{
-  margin:0;
-  background:
-    radial-gradient(
-      circle at 50% 0,
-      #180040 0,
-      #080019 45%,
-      var(--bg) 100%
-    );
-  color:var(--text);
-  font-family:Arial,Helvetica,sans-serif;
-  min-height:100vh
-}
-
-.wrap{
-  max-width:720px;
-  margin:auto;
-  padding:12px
-}
-
-h1{
-  font-size:22px;
-  margin:6px 0 12px
-}
-
-h1 span{
-  color:#ffb000
-}
-
-h2{
-  font-size:17px;
-  margin:0 0 10px
-}
-
-h3{
-  font-size:15px;
-  margin:0 0 8px
-}
-
-.card{
-  border:1px solid var(--line);
-  border-radius:16px;
-  background:rgba(8,0,24,.88);
-  padding:12px 14px
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  margin-bottom:12px
-}
-
-.stat b{
-  display:block;
-  font-size:26px;
-  color:var(--gold)
-}
-
-.stat small{
-  color:var(--muted)
-}
-
-.money{
-  color:var(--green)!important
-}
-
-.blue{
-  color:var(--blue)!important
-}
-
-.red{
-  color:var(--red)!important
-}
-
-.dot{
-  display:inline-block;
-  width:9px;
-  height:9px;
-  border-radius:50%;
-  background:#555;
-  margin-right:6px
-}
-
-.dot.on{
-  background:var(--green);
-  box-shadow:0 0 8px var(--green)
-}
-
-input,
-button,
-textarea,
-select{
-  font:inherit
-}
-
-input,
-textarea,
-select{
-  width:100%;
-  padding:12px;
-  background:#05000e;
-  color:#fff;
-  border:1px solid #542184;
-  border-radius:10px;
-  outline:0;
-  font-size:16px
-}
-
-textarea{
-  resize:vertical
-}
-
-button{
-  cursor:pointer;
-  background:#9d36ff;
-  color:#fff;
-  border:0;
-  border-radius:10px;
-  padding:10px 14px;
-  font-weight:900
-}
-
-button:disabled{
-  opacity:.55;
-  cursor:not-allowed
-}
-
-.btn-dark{
-  background:#26104d;
-  border:1px solid #4d1d82
-}
-
-.btn-green{
-  background:#087b3c
-}
-
-.btn-red{
-  background:#8d1830
-}
-
-.btn-blue{
-  background:#176ba8
-}
-
-.section{
-  margin-bottom:12px
-}
-
-.section-title{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:9px
-}
-
-.section-title button{
-  padding:7px 10px;
-  font-size:12px
-}
-
-.list{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  margin-top:10px
-}
-
-.p{
-  display:grid;
-  grid-template-columns:44px 1fr auto;
-  gap:10px;
-  align-items:center
-}
-
-.av{
-  width:44px;
-  height:44px;
-  border-radius:50%;
-  background:#ffb900;
-  color:#2a1600;
-  display:grid;
-  place-items:center;
-  font-weight:900;
-  font-size:20px
-}
-
-.p b{
-  font-size:16px
-}
-
-.p small{
-  color:var(--muted);
-  display:block;
-  font-size:12px;
-  line-height:1.5
-}
-
-.p .num{
-  text-align:right;
-  font-size:13px
-}
-
-.p .num strong{
-  display:block;
-  font-size:17px;
-  color:var(--gold)
-}
-
-.win{
-  color:var(--green)
-}
-
-.lose{
-  color:var(--red)
-}
-
-.p button{
-  margin-top:6px;
-  padding:6px 10px;
-  font-size:12px;
-  background:#26104d;
-  border:1px solid #4d1d82
-}
-
-#gate{
-  max-width:380px;
-  margin:18vh auto 0;
-  text-align:center
-}
-
-#gate input{
-  margin:12px 0
-}
-
-#err{
-  color:#ff6b8a;
-  min-height:20px;
-  font-size:13px
-}
-
-.note{
-  color:var(--muted);
-  font-size:12px;
-  margin:12px 0;
-  line-height:1.5
-}
-
-.money-box{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px
-}
-
-.money-item{
-  background:#05000e;
-  border:1px solid #32125b;
-  border-radius:12px;
-  padding:12px
-}
-
-.money-item small{
-  color:var(--muted);
-  display:block;
-  margin-bottom:5px
-}
-
-.money-item b{
-  font-size:20px;
-  color:var(--gold)
-}
-
-.form-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px
-}
-
-.action-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-  margin-top:8px
-}
-
-.finance-status{
-  min-height:18px;
-  margin-top:8px;
-  font-size:12px
-}
-
-.tx{
-  padding:10px;
-  border:1px solid #32125b;
-  background:#05000e;
-  border-radius:10px
-}
-
-.tx-top{
-  display:flex;
-  justify-content:space-between;
-  gap:10px
-}
-
-.tx small{
-  display:block;
-  color:var(--muted);
-  line-height:1.5;
-  margin-top:4px
-}
-
-.tx-amount{
-  font-weight:900
-}
-
-.withdraw-card{
-  border:1px solid #542184;
-  border-radius:12px;
-  padding:11px;
-  background:#05000e
-}
-
-.withdraw-card + .withdraw-card{
-  margin-top:8px
-}
-
-.withdraw-head{
-  display:flex;
-  justify-content:space-between;
-  gap:8px;
-  align-items:center
-}
-
-.status{
-  display:inline-block;
-  padding:4px 7px;
-  border-radius:999px;
-  font-size:10px;
-  font-weight:900;
-  background:#26104d;
-  color:#fff
-}
-
-.status.pending{
-  color:#ffd02d
-}
-
-.status.success{
-  color:#19e96f
-}
-
-.status.failed{
-  color:#ff304f
-}
-
-.status.processing{
-  color:#38a8ff
-}
-
-.target-card{
-  margin:0 0 12px
-}
-
-.target-card h2{
-  font-size:17px;
-  margin:0 0 8px
-}
-
-.target-help{
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.5;
-  margin:0 0 9px
-}
-
-#targetInput{
-  width:100%;
-  min-height:100px;
-  padding:12px;
-  background:#05000e;
-  color:#fff;
-  border:1px solid #542184;
-  border-radius:10px;
-  outline:0;
-  resize:vertical;
-  margin-bottom:8px
-}
-
-.target-actions{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px
-}
-
-#updateTargets{
-  background:#9d36ff
-}
-
-#clearTargets{
-  background:#26104d;
-  border:1px solid #4d1d82
-}
-
-#targetStatus{
-  min-height:18px;
-  margin-top:8px;
-  font-size:12px
-}
-
-.target-preview{
-  margin-top:9px;
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px
-}
-
-.target-chip{
-  padding:5px 8px;
-  border-radius:999px;
-  background:#1d0b38;
-  border:1px solid #542184;
-  color:var(--gold);
-  font-weight:800;
-  font-size:12px
-}
-
-.hidden{
-  display:none!important
-}
-
-@media(max-width:420px){
-
-  .money-box{
-    grid-template-columns:1fr
+const http = require("http");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
+const { URL } = require("url");
+
+const PORT = process.env.PORT || 3000;
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const GAME_URL = process.env.GAME_URL;
+const ADMIN_KEY = process.env.ADMIN_KEY || "change-this-admin-key";
+const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, "game_bot_data.json");
+const TIMEZONE = "Africa/Lagos";
+
+if (!BOT_TOKEN) {
+  console.error("BOT_TOKEN is missing");
+  process.exit(1);
+}
+
+if (!GAME_URL) {
+  console.error("GAME_URL is missing");
+  process.exit(1);
+}
+
+const DEFAULT_SLOTS = [
+  {
+    id: 1,
+    enabled: true,
+    time: "09:00",
+    text: "🎁 The daily case is already waiting for you!\n\nGrab it right now!",
+    button: "🎮 PLAY NOW",
+    lastSentDate: ""
+  },
+  {
+    id: 2,
+    enabled: true,
+    time: "15:00",
+    text: "🚀 The rocket is ready for takeoff!\n\nCome and play your next round.",
+    button: "🎮 PLAY NOW",
+    lastSentDate: ""
+  },
+  {
+    id: 3,
+    enabled: true,
+    time: "20:00",
+    text: "🔥 Your next round is waiting!\n\nDon’t miss it.",
+    button: "🎮 PLAY NOW",
+    lastSentDate: ""
   }
-
-  .form-row{
-    grid-template-columns:1fr
-  }
-
-  .target-actions{
-    grid-template-columns:1fr
-  }
-
-  .action-row{
-    grid-template-columns:1fr
-  }
-
-}
-</style>
-</head>
-
-<body>
-
-<div class="wrap">
-
-<!-- =========================
-     ADMIN LOGIN
-     ========================= -->
-
-<div id="gate" class="card">
-
-  <h1>🛠 Crash <span>Admin</span></h1>
-
-  <input
-    id="key"
-    type="password"
-    placeholder="Admin key"
-    autocomplete="current-password"
-  >
-
-  <button id="enter" style="width:100%">
-    OPEN
-  </button>
-
-  <div id="err"></div>
-
-</div>
-
-
-<!-- =========================
-     ADMIN PANEL
-     ========================= -->
-
-<div id="main" hidden>
-
-  <h1>🛠 Crash <span>Admin</span></h1>
-
-
-  <!-- =========================
-       MAIN STATS
-       ========================= -->
-
-  <div class="grid">
-
-    <div class="card stat">
-      <b id="online">0</b>
-      <small>Online now</small>
-    </div>
-
-    <div class="card stat">
-      <b id="total">0</b>
-      <small>Total players</small>
-    </div>
-
-    <div class="card stat">
-      <b id="bets">0</b>
-      <small>Bets this round</small>
-    </div>
-
-    <div class="card stat">
-      <b id="phase">—</b>
-      <small id="rid">Round</small>
-    </div>
-
-  </div>
-
-
-  <!-- =========================
-       FINANCIAL DASHBOARD
-       ========================= -->
-
-  <div class="card section">
-
-    <div class="section-title">
-
-      <h2>💰 Financial Dashboard</h2>
-
-      <button
-        id="refreshFinance"
-        class="btn-blue"
-      >
-        🔄 Refresh
-      </button>
-
-    </div>
-
-
-    <div class="money-box">
-
-      <div class="money-item">
-        <small>💰 Payout Fund</small>
-        <b id="fundBalance">₦0.00</b>
-      </div>
-
-      <div class="money-item">
-        <small>💳 Deposits</small>
-        <b id="depositTotal">₦0.00</b>
-      </div>
-
-      <div class="money-item">
-        <small>🎮 Game Earnings</small>
-        <b id="earningTotal">₦0.00</b>
-      </div>
-
-      <div class="money-item">
-        <small>💸 Withdrawals</small>
-        <b id="withdrawTotal">₦0.00</b>
-      </div>
-
-      <div class="money-item">
-        <small>👛 User Wallets</small>
-        <b id="walletTotal">₦0.00</b>
-      </div>
-
-      <div class="money-item">
-        <small>⏳ Pending Withdrawals</small>
-        <b id="pendingWithdrawTotal">₦0.00</b>
-      </div>
-
-    </div>
-
-    <div
-      id="financeStatus"
-      class="finance-status"
-    ></div>
-
-  </div>
-
-
-  <!-- =========================
-       PAYOUT FUND
-       ========================= -->
-
-  <div class="card section">
-
-    <h2>🏦 Payout Fund</h2>
-
-    <p class="note">
-      Record the amount of payout liquidity available to the platform.
-      There is no ₦10,000,000 limit here. Values such as
-      ₦50,000,000 or ₦100,000,000 can be entered.
-      This ledger does not itself create money at your payment provider.
-    </p>
-
-    <input
-      id="fundInput"
-      type="number"
-      min="0"
-      step="0.01"
-      placeholder="Enter payout fund amount in ₦"
-    >
-
-    <div class="action-row">
-
-      <button
-        id="setFund"
-        class="btn-green"
-      >
-        💰 SET FUND
-      </button>
-
-      <button
-        id="refreshFund"
-        class="btn-dark"
-      >
-        🔄 LOAD FUND
-      </button>
-
-    </div>
-
-    <div
-      id="fundStatus"
-      class="finance-status"
-    ></div>
-
-  </div>
-
-
-  <!-- =========================
-       CRASH TARGET CONTROL
-       ========================= -->
-
-  <div class="card target-card">
-
-    <h2>🎯 Crash Target Control</h2>
-
-    <p class="target-help">
-      Enter one or multiple crash targets.
-      Use commas, arrows, spaces, or new lines.
-      Example:
-      <b>2.22, 1.95, 3.50, 5.20</b>
-    </p>
-
-    <textarea
-      id="targetInput"
-      rows="4"
-      placeholder="2.22 → 1.95 → 3.50 → 5.20"
-    ></textarea>
-
-    <div class="target-actions">
-
-      <button id="updateTargets" type="button">
-        🎯 UPDATE TARGETS
-      </button>
-
-      <button id="clearTargets" type="button">
-        🗑️ CLEAR
-      </button>
-
-    </div>
-
-    <div id="targetStatus"></div>
-
-    <div
-      id="targetPreview"
-      class="target-preview"
-    ></div>
-
-  </div>
-
-
-  <!-- =========================
-       WITHDRAWALS
-       ========================= -->
-
-  <div class="card section">
-
-    <div class="section-title">
-
-      <h2>💸 Withdrawal Requests</h2>
-
-      <button
-        id="refreshWithdrawals"
-        class="btn-blue"
-      >
-        🔄 Refresh
-      </button>
-
-    </div>
-
-    <div id="withdrawalsList">
-
-      <div class="note">
-        No withdrawal data loaded.
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- =========================
-       TRANSACTIONS
-       ========================= -->
-
-  <div class="card section">
-
-    <div class="section-title">
-
-      <h2>📒 Transactions</h2>
-
-      <button
-        id="refreshTransactions"
-        class="btn-blue"
-      >
-        🔄 Refresh
-      </button>
-
-    </div>
-
-    <div id="transactionsList">
-
-      <div class="note">
-        No transactions loaded.
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- =========================
-       PLAYER SEARCH
-       ========================= -->
-
-  <div class="card section">
-
-    <h2>👥 Players</h2>
-
-    <input
-      id="q"
-      placeholder="Search name, ID or Telegram @username"
-    >
-
-    <div
-      class="list"
-      id="list"
-    ></div>
-
-  </div>
-
-
-  <p class="note">
-    Each player has a permanent ID shown under their name.
-    Telegram details appear only when the game is opened inside
-    your verified Telegram mini app.
-  </p>
-
-</div>
-
-</div>
-
-
-<script>
-
-const $ = id =>
-  document.getElementById(id);
-
-
-const esc = t =>
-  String(t == null ? '' : t)
-    .replace(/[&<>"']/g, c =>
-      '&#' + c.charCodeAt(0) + ';'
-    );
-
-
-const fmt = n =>
-  Number(n || 0).toLocaleString(
-    undefined,
-    {
-      maximumFractionDigits:2
+];
+
+let db = {
+  users: {},
+  slots: DEFAULT_SLOTS
+};
+
+function loadDB() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+
+      db = {
+        users: parsed.users || {},
+        slots:
+          Array.isArray(parsed.slots) && parsed.slots.length
+            ? parsed.slots.slice(0, 3)
+            : DEFAULT_SLOTS
+      };
     }
-  );
+  } catch (e) {
+    console.error("Database load failed:", e.message);
+  }
 
+  while (db.slots.length < 3) {
+    db.slots.push({ ...DEFAULT_SLOTS[db.slots.length] });
+  }
 
-const money = n =>
-  '₦' + fmt(n);
+  db.slots = db.slots.slice(0, 3).map((s, i) => ({
+    ...DEFAULT_SLOTS[i],
+    ...s,
+    id: i + 1,
+    enabled: s.enabled !== false,
+    time: /^\d{2}:\d{2}$/.test(s.time || "")
+      ? s.time
+      : DEFAULT_SLOTS[i].time,
+    text: String(s.text || DEFAULT_SLOTS[i].text).slice(0, 4000),
+    button: String(s.button || DEFAULT_SLOTS[i].button).slice(0, 100)
+  }));
 
+  saveDB();
+}
 
-let key = null;
-let data = null;
-let finance = null;
-let timer = null;
+function saveDB() {
+  try {
+    const dir = path.dirname(DATA_FILE);
 
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
 
-/* =========================
-   LOAD ADMIN KEY
-   ========================= */
+    const temp = DATA_FILE + ".tmp";
 
-try{
-
-  key =
-    localStorage.getItem(
-      'adminKey'
+    fs.writeFileSync(
+      temp,
+      JSON.stringify(db, null, 2)
     );
 
-}catch(e){}
+    fs.renameSync(temp, DATA_FILE);
+  } catch (e) {
+    console.error("Database save failed:", e.message);
+  }
+}
 
+function telegram(method, body = {}) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
 
-/* =========================
-   SERVER CALL
-   ========================= */
-
-async function call(path,body){
-
-  const r =
-    await fetch(
-      '/admin/api/' + path,
+    const req = https.request(
       {
-        method:'POST',
+        hostname: "api.telegram.org",
+        path: `/bot${BOT_TOKEN}/${method}`,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data)
+        }
+      },
+      res => {
+        let out = "";
 
-        headers:{
-          'Content-Type':
-            'application/json'
-        },
+        res.on("data", c => {
+          out += c;
+        });
 
-        body:JSON.stringify(
-          Object.assign(
-            {key:key},
-            body || {}
-          )
-        )
+        res.on("end", () => {
+          try {
+            const parsed = JSON.parse(out);
+
+            if (parsed.ok) {
+              resolve(parsed.result);
+            } else {
+              reject(
+                new Error(
+                  parsed.description || "Telegram API error"
+                )
+              );
+            }
+          } catch {
+            reject(new Error("Invalid Telegram response"));
+          }
+        });
       }
     );
 
+    req.on("error", reject);
 
-  let result;
-
-  try{
-
-    result =
-      await r.json();
-
-  }catch(e){
-
-    throw new Error(
-      'Invalid server response'
-    );
-
-  }
-
-
-  return result;
+    req.write(data);
+    req.end();
+  });
 }
 
+function welcomeText(firstName) {
+  const name = firstName ? ` ${firstName}` : "";
 
-/* =========================
-   TIME FORMAT
-   ========================= */
-
-function ago(t){
-
-  if(!t)
-    return 'never';
-
-
-  const s =
-    Math.max(
-      0,
-      Math.round(
-        (Date.now()-t)/1000
-      )
-    );
-
-
-  if(s < 60)
-    return s + 's ago';
-
-
-  if(s < 3600)
-    return Math.round(s/60) +
-      ' min ago';
-
-
-  if(s < 86400)
-    return Math.round(s/3600) +
-      ' h ago';
-
-
-  return Math.round(s/86400) +
-    ' d ago';
+  return (
+    `🚀 Welcome${name}!\n\n` +
+    `🎮 Crazy Crash Rockets is ready.\n\n` +
+    `Tap PLAY NOW to enter the game.`
+  );
 }
 
-
-/* =========================
-   RENDER MAIN DATA
-   ========================= */
-
-function render(){
-
-  if(!data)
-    return;
-
-
-  $('online').textContent =
-    data.online || 0;
-
-
-  $('total').textContent =
-    data.total || 0;
-
-
-  $('bets').textContent =
-    data.round &&
-    data.round.bets != null
-      ? data.round.bets
-      : 0;
-
-
-  $('phase').textContent =
-    data.round
-
-    ?
-
-    (
-      {
-        count:'Betting',
-        fly:'Flying',
-        over:'Crashed'
-      }[
-        data.round.phase
-      ] || '—'
-    )
-
-    :
-
-    '—';
-
-
-  $('rid').textContent =
-    data.round
-
-      ?
-
-      'Round #' +
-      data.round.id
-
-      :
-
-      'Round';
-
-
-  renderPlayers();
-
-}
-
-
-/* =========================
-   RENDER PLAYERS
-   ========================= */
-
-function renderPlayers(){
-
-  if(!data)
-    return;
-
-
-  const q =
-    $('q').value
-      .trim()
-      .toLowerCase();
-
-
-  const rows =
-    (data.players || [])
-      .filter(p =>
-        !q ||
+async function sendGameMessage(
+  chatId,
+  text,
+  buttonText = "🎮 PLAY NOW"
+) {
+  return telegram("sendMessage", {
+    chat_id: chatId,
+    text,
+    reply_markup: {
+      inline_keyboard: [
         [
-          p.name,
-          p.id,
-          p.tg &&
-          p.tg.username,
-          p.tg &&
-          p.tg.name
+          {
+            text: buttonText || "🎮 PLAY NOW",
+            web_app: {
+              url: GAME_URL
+            }
+          }
         ]
-        .join(' ')
-        .toLowerCase()
-        .includes(q)
-      )
-      .sort(
-        (a,b) =>
-          (b.online-a.online) ||
-          (b.seen-a.seen)
-      );
-
-
-  $('list').innerHTML =
-
-    rows.length
-
-    ?
-
-    rows.map(p =>
-
-      '<div class="card p">' +
-
-        '<div class="av">' +
-
-          esc(
-            (p.name || '?')[0]
-              .toUpperCase()
-          ) +
-
-        '</div>' +
-
-        '<div>' +
-
-          '<b>' +
-
-            '<span class="dot' +
-              (
-                p.online
-                  ? ' on'
-                  : ''
-              ) +
-            '"></span>' +
-
-            esc(p.name) +
-
-          '</b>' +
-
-          '<small>' +
-
-            'ID ' +
-            esc(p.id) +
-
-            (
-              p.tg
-
-              ?
-
-              ' · TG ' +
-
-              esc(
-                p.tg.username
-                  ? '@' +
-                    p.tg.username
-                  : p.tg.id
-              ) +
-
-              (
-                p.tg.name
-
-                  ?
-
-                  ' (' +
-                  esc(p.tg.name) +
-                  ')'
-
-                  :
-
-                  ''
-              )
-
-              :
-
-              ''
-            ) +
-
-            '<br>' +
-
-            (
-              p.online
-
-                ?
-
-                'Online now'
-
-                :
-
-                'Last seen ' +
-                ago(p.seen)
-            ) +
-
-            ' · joined ' +
-            ago(p.first) +
-
-            '<br>' +
-
-            'Rounds ' +
-            (p.rounds || 0) +
-
-            ' · wins ' +
-            (p.wins || 0) +
-
-            ' · best ' +
-
-            (
-              p.best
-                ? Number(p.best)
-                    .toFixed(2) + 'x'
-                : '—'
-            ) +
-
-            (
-              p.bet
-
-                ?
-
-                '<br>Bet 🪙 ' +
-                fmt(p.bet.amt) +
-
-                (
-                  p.bet.auto
-
-                    ?
-
-                    ' (auto ' +
-                    p.bet.auto +
-                    'x)'
-
-                    :
-
-                    ''
-                ) +
-
-                (
-                  p.bet.at
-
-                    ?
-
-                    ' · cashed at ' +
-                    Number(p.bet.at)
-                      .toFixed(2) +
-                    'x'
-
-                    :
-
-                    ''
-                )
-
-                :
-
-                ''
-            ) +
-
-          '</small>' +
-
-        '</div>' +
-
-        '<div class="num">' +
-
-          '<strong>🪙 ' +
-          fmt(p.bal) +
-          '</strong>' +
-
-          '<span class="' +
-            (
-              p.pnl >= 0
-                ? 'win'
-                : 'lose'
-            ) +
-          '">' +
-
-            (
-              p.pnl >= 0
-                ? '+'
-                : ''
-            ) +
-
-            fmt(p.pnl) +
-
-          '</span>' +
-
-          '<br>' +
-
-          '<button data-id="' +
-            esc(p.id) +
-          '">' +
-
-            'Restore' +
-
-          '</button>' +
-
-        '</div>' +
-
-      '</div>'
-
-    ).join('')
-
-    :
-
-    '<div class="card" style="color:var(--muted)">' +
-      'No players match.' +
-    '</div>';
-
+      ]
+    }
+  });
 }
 
+function registerUser(user, chatId) {
+  const id = String(user.id);
+  const now = new Date().toISOString();
 
-/* =========================
-   POLL SERVER
-   ========================= */
-
-async function poll(){
-
-  try{
-
-    const j =
-      await call('state');
-
-
-    if(!j.ok)
-      throw new Error(
-        j.error ||
-        'Admin authentication failed'
-      );
-
-
-    data = j;
-
-    render();
-
-  }catch(e){
-
-    clearInterval(timer);
-
-    $('main').hidden = true;
-
-    $('gate').hidden = false;
-
-    $('err').textContent =
-      e.message ||
-      'Could not reach the server';
-
+  if (!db.users[id]) {
+    db.users[id] = {
+      id: user.id,
+      chatId,
+      username: user.username || "",
+      firstName: user.first_name || "",
+      lastName: user.last_name || "",
+      startedAt: now,
+      lastSeen: now,
+      notificationsEnabled: true,
+      blocked: false
+    };
+  } else {
+    Object.assign(db.users[id], {
+      chatId,
+      username:
+        user.username ||
+        db.users[id].username ||
+        "",
+      firstName:
+        user.first_name ||
+        db.users[id].firstName ||
+        "",
+      lastName:
+        user.last_name ||
+        db.users[id].lastName ||
+        "",
+      lastSeen: now,
+      blocked: false
+    });
   }
 
+  saveDB();
+
+  return db.users[id];
 }
 
-
-/* =========================
-   OPEN ADMIN
-   ========================= */
-
-async function open(){
-
-  key =
-    $('key').value.trim() ||
-    key;
-
-
-  if(!key){
-
-    $('err').textContent =
-      'Enter your admin key.';
-
+async function handleUpdate(update) {
+  if (
+    !update.message ||
+    !update.message.chat ||
+    !update.message.from
+  ) {
     return;
   }
 
-
-  try{
-
-    const j =
-      await call('state');
-
-
-    if(!j.ok){
-
-      $('err').textContent =
-        j.error ||
-        'Wrong admin key';
-
-      return;
-    }
-
-
-    try{
-
-      localStorage.setItem(
-        'adminKey',
-        key
-      );
-
-    }catch(e){}
-
-
-    $('gate').hidden = true;
-
-    $('main').hidden = false;
-
-    data = j;
-
-    render();
-
-    await loadFinance();
-
-    await loadWithdrawals();
-
-    await loadTransactions();
-
-    clearInterval(timer);
-
-    timer =
-      setInterval(
-        async () => {
-
-          await poll();
-
-          await loadFinance();
-
-        },
-        5000
-      );
-
-  }catch(e){
-
-    $('err').textContent =
-      e.message ||
-      'Could not reach server';
-
-  }
-
-}
-
-
-/* =========================
-   LOGIN
-   ========================= */
-
-$('enter').onclick =
-  open;
-
-
-$('key').onkeydown =
-  e => {
-
-    if(e.key === 'Enter')
-      open();
-
-  };
-
-
-/* =========================
-   PLAYER SEARCH
-   ========================= */
-
-$('q').oninput =
-  renderPlayers;
-
-
-/* =========================
-   RESTORE PLAYER
-   ========================= */
-
-$('list').onclick =
-  async e => {
-
-    const b =
-      e.target.closest('button');
-
-
-    if(!b)
-      return;
-
-
-    b.disabled = true;
-
-
-    try{
-
-      await call(
-        'restore',
-        {
-          id:b.dataset.id
-        }
-      );
-
-      await poll();
-
-    }catch(err){
-
-      alert(
-        err.message ||
-        'Restore failed'
-      );
-
-    }
-
-    b.disabled = false;
-
-  };
-
-
-/* =========================================================
-   FINANCIAL DASHBOARD
-   ========================================================= */
-
-function setFinanceStatus(
-  message,
-  type
-){
-
-  const el =
-    $('financeStatus');
-
-
-  el.textContent =
-    message || '';
-
-
-  el.style.color =
-    type === 'error'
-      ? '#ff6b8a'
-      :
-    type === 'success'
-      ? '#19e96f'
-      :
-    '#ffd02d';
-}
-
-
-async function loadFinance(){
-
-  try{
-
-    const j =
-      await call('finance');
-
-
-    if(!j.ok){
-
-      setFinanceStatus(
-        j.error ||
-        'Finance data unavailable.',
-        'error'
-      );
-
-      return;
-    }
-
-
-    finance = j;
-
-
-    const fund =
-      j.payoutFundKobo != null
-        ? Number(j.payoutFundKobo)/100
-        :
-      j.payoutFund != null
-        ? Number(j.payoutFund)
-        :
-      0;
-
-
-    const deposits =
-      j.depositTotalKobo != null
-        ? Number(j.depositTotalKobo)/100
-        :
-      j.depositTotal != null
-        ? Number(j.depositTotal)
-        :
-      0;
-
-
-    const earnings =
-      j.earningTotalKobo != null
-        ? Number(j.earningTotalKobo)/100
-        :
-      j.earningTotal != null
-        ? Number(j.earningTotal)
-        :
-      0;
-
-
-    const withdrawals =
-      j.withdrawTotalKobo != null
-        ? Number(j.withdrawTotalKobo)/100
-        :
-      j.withdrawTotal != null
-        ? Number(j.withdrawTotal)
-        :
-      0;
-
-
-    const wallets =
-      j.walletTotalKobo != null
-        ? Number(j.walletTotalKobo)/100
-        :
-      j.walletTotal != null
-        ? Number(j.walletTotal)
-        :
-      0;
-
-
-    const pending =
-      j.pendingWithdrawTotalKobo != null
-        ? Number(j.pendingWithdrawTotalKobo)/100
-        :
-      j.pendingWithdrawTotal != null
-        ? Number(j.pendingWithdrawTotal)
-        :
-      0;
-
-
-    $('fundBalance').textContent =
-      money(fund);
-
-
-    $('depositTotal').textContent =
-      money(deposits);
-
-
-    $('earningTotal').textContent =
-      money(earnings);
-
-
-    $('withdrawTotal').textContent =
-      money(withdrawals);
-
-
-    $('walletTotal').textContent =
-      money(wallets);
-
-
-    $('pendingWithdrawTotal').textContent =
-      money(pending);
-
-
-    $('fundInput').value =
-      fund || '';
-
-
-    setFinanceStatus(
-      '✅ Financial data updated.',
-      'success'
-    );
-
-
-  }catch(e){
-
-    setFinanceStatus(
-      '⚠️ Finance endpoint unavailable.',
-      'error'
-    );
-
-  }
-
-}
-
-
-/* =========================
-   REFRESH FINANCE
-   ========================= */
-
-$('refreshFinance').onclick =
-  loadFinance;
-
-
-/* =========================
-   PAYOUT FUND
-   ========================= */
-
-$('setFund').onclick =
-  async () => {
-
-    const value =
-      Number(
-        $('fundInput').value
-      );
-
-
-    if(!Number.isFinite(value) ||
-       value < 0){
-
-      $('fundStatus').textContent =
-        '⚠️ Enter a valid amount.';
-
-      $('fundStatus').style.color =
-        '#ff6b8a';
-
-      return;
-    }
-
-
-    $('setFund').disabled = true;
-
-
-    $('fundStatus').textContent =
-      '⏳ Updating payout fund...';
-
-    $('fundStatus').style.color =
-      '#ffd02d';
-
-
-    try{
-
-      const j =
-        await call(
-          'payout-fund',
-          {
-            amount:value
-          }
-        );
-
-
-      if(!j.ok){
-
-        throw new Error(
-          j.error ||
-          'Could not update payout fund'
-        );
-
-      }
-
-
-      $('fundStatus').textContent =
-        '✅ Payout fund updated.';
-
-      $('fundStatus').style.color =
-        '#19e96f';
-
-
-      await loadFinance();
-
-
-    }catch(e){
-
-      $('fundStatus').textContent =
-        '❌ ' +
-        (
-          e.message ||
-          'Payout fund update failed'
-        );
-
-      $('fundStatus').style.color =
-        '#ff6b8a';
-
-    }
-
-
-    $('setFund').disabled = false;
-
-  };
-
-
-$('refreshFund').onclick =
-  loadFinance;
-
-
-/* =========================================================
-   WITHDRAWALS
-   ========================================================= */
-
-function withdrawalStatus(status){
-
-  const s =
-    String(status || '')
-      .toLowerCase();
-
-
-  let cls = 'pending';
-
-
-  if(
-    s === 'success' ||
-    s === 'successful' ||
-    s === 'completed'
-  ){
-
-    cls = 'success';
-
-  }else if(
-    s === 'failed' ||
-    s === 'reversed' ||
-    s === 'cancelled'
-  ){
-
-    cls = 'failed';
-
-  }else if(
-    s === 'processing' ||
-    s === 'pending_transfer'
-  ){
-
-    cls = 'processing';
-
-  }
-
-
-  return (
-    '<span class="status ' +
-    cls +
-    '">' +
-    esc(
-      status || 'PENDING'
-    ).toUpperCase() +
-    '</span>'
+  const msg = update.message;
+
+  const user = registerUser(
+    msg.from,
+    msg.chat.id
   );
 
-}
-
-
-function getWithdrawalId(w){
-
-  return (
-    w.id ||
-    w._id ||
-    w.reference ||
-    ''
-  );
-
-}
-
-
-function getWithdrawalAmount(w){
-
-  if(w.amountKobo != null)
-    return Number(w.amountKobo)/100;
-
-
-  if(w.amountKobo === 0)
-    return 0;
-
-
-  return Number(
-    w.amount || 0
-  );
-
-}
-
-
-function renderWithdrawals(rows){
-
-  const box =
-    $('withdrawalsList');
-
-
-  if(!Array.isArray(rows) ||
-     !rows.length){
-
-    box.innerHTML =
-      '<div class="note">' +
-      'No withdrawal requests.' +
-      '</div>';
-
-    return;
-  }
-
-
-  box.innerHTML =
-    rows.map(w => {
-
-      const amount =
-        getWithdrawalAmount(w);
-
-
-      const id =
-        getWithdrawalId(w);
-
-
-      const user =
-        w.userName ||
-        w.name ||
-        w.playerName ||
-        w.userId ||
-        'Unknown user';
-
-
-      const bank =
-        w.bankName ||
-        w.bank ||
-        'Bank not supplied';
-
-
-      const account =
-        w.accountNumber ||
-        w.account ||
-        '';
-
-
-      const status =
-        String(
-          w.status ||
-          'pending'
-        );
-
-
-      const canPay =
-        [
-          'pending',
-          'awaiting',
-          'approved'
-        ].includes(
-          status.toLowerCase()
-        );
-
-
-      return (
-
-        '<div class="withdraw-card">' +
-
-          '<div class="withdraw-head">' +
-
-            '<b>💸 ' +
-            money(amount) +
-            '</b>' +
-
-            withdrawalStatus(status) +
-
-          '</div>' +
-
-          '<small style="color:var(--muted)">' +
-
-            'User: ' +
-            esc(user) +
-
-            '<br>' +
-
-            'Bank: ' +
-            esc(bank) +
-
-            '<br>' +
-
-            'Account: ' +
-            esc(account) +
-
-            '<br>' +
-
-            'Reference: ' +
-            esc(
-              w.reference ||
-              id ||
-              '—'
-            ) +
-
-            (
-              w.createdAt
-
-                ?
-
-                '<br>Created: ' +
-                esc(
-                  new Date(
-                    w.createdAt
-                  ).toLocaleString()
-                )
-
-                :
-
-                ''
-            ) +
-
-          '</small>' +
-
-          (
-            canPay && id
-
-              ?
-
-              '<div class="action-row">' +
-
-                '<button ' +
-                  'class="btn-green pay-withdraw" ' +
-                  'data-id="' +
-                  esc(id) +
-                  '">' +
-                  '🏦 PAY WITH PROVIDER' +
-                '</button>' +
-
-                '<button ' +
-                  'class="btn-red reject-withdraw" ' +
-                  'data-id="' +
-                  esc(id) +
-                  '">' +
-                  '❌ REJECT' +
-                '</button>' +
-
-              '</div>'
-
-              :
-
-              ''
-
-          ) +
-
-        '</div>'
-
-      );
-
-    }).join('');
-
-}
-
-
-async function loadWithdrawals(){
-
-  try{
-
-    const j =
-      await call(
-        'withdrawals'
-      );
-
-
-    if(!j.ok){
-
-      $('withdrawalsList').innerHTML =
-        '<div class="note" style="color:#ff6b8a">' +
-        esc(
-          j.error ||
-          'Could not load withdrawals.'
-        ) +
-        '</div>';
-
-      return;
-    }
-
-
-    const rows =
-      Array.isArray(j)
-        ? j
-        :
-      Array.isArray(j.withdrawals)
-        ? j.withdrawals
-        :
-      Array.isArray(j.data)
-        ? j.data
-        :
-      [];
-
-
-    renderWithdrawals(rows);
-
-  }catch(e){
-
-    $('withdrawalsList').innerHTML =
-      '<div class="note" style="color:#ff6b8a">' +
-      'Withdrawal endpoint unavailable.' +
-      '</div>';
-
-  }
-
-}
-
-
-$('refreshWithdrawals').onclick =
-  loadWithdrawals;
-
-
-/* =========================
-   WITHDRAWAL ACTIONS
-   ========================= */
-
-$('withdrawalsList').onclick =
-  async e => {
-
-    const pay =
-      e.target.closest(
-        '.pay-withdraw'
-      );
-
-
-    const reject =
-      e.target.closest(
-        '.reject-withdraw'
-      );
-
-
-    if(pay){
-
-      const id =
-        pay.dataset.id;
-
-
-      if(
-        !confirm(
-          'Process this withdrawal through the payment provider?'
-        )
-      )
-        return;
-
-
-      pay.disabled = true;
-
-
-      try{
-
-        const j =
-          await call(
-            'withdrawal-pay',
-            {
-              id:id
-            }
-          );
-
-
-        if(!j.ok){
-
-          throw new Error(
-            j.error ||
-            'Withdrawal payment failed'
-          );
-
-        }
-
-
-        alert(
-          'Withdrawal payment request submitted.'
-        );
-
-
-        await loadWithdrawals();
-
-        await loadFinance();
-
-
-      }catch(err){
-
-        alert(
-          err.message ||
-          'Withdrawal payment failed'
-        );
-
-        pay.disabled = false;
-
-      }
-
-    }
-
-
-    if(reject){
-
-      const id =
-        reject.dataset.id;
-
-
-      if(
-        !confirm(
-          'Reject this withdrawal request?'
-        )
-      )
-        return;
-
-
-      reject.disabled = true;
-
-
-      try{
-
-        const j =
-          await call(
-            'withdrawal-reject',
-            {
-              id:id
-            }
-          );
-
-
-        if(!j.ok){
-
-          throw new Error(
-            j.error ||
-            'Could not reject withdrawal'
-          );
-
-        }
-
-
-        await loadWithdrawals();
-
-        await loadFinance();
-
-
-      }catch(err){
-
-        alert(
-          err.message ||
-          'Could not reject withdrawal'
-        );
-
-        reject.disabled = false;
-
-      }
-
-    }
-
-  };
-
-
-/* =========================================================
-   TRANSACTIONS
-   ========================================================= */
-
-function transactionType(t){
-
-  const type =
-    String(
-      t.type ||
-      t.kind ||
-      'transaction'
-    ).toLowerCase();
-
-
-  if(type.includes('deposit'))
-    return '💳 Deposit';
-
-
-  if(type.includes('withdraw'))
-    return '💸 Withdrawal';
-
-
-  if(
-    type.includes('win') ||
-    type.includes('earning')
+  const text = String(
+    msg.text || ""
   )
-    return '🏆 Game earning';
+    .trim()
+    .toLowerCase();
 
+  if (text === "/start") {
+    user.notificationsEnabled = true;
 
-  if(type.includes('bet'))
-    return '🎮 Bet';
+    saveDB();
 
-
-  if(type.includes('refund'))
-    return '↩️ Refund';
-
-
-  return '📒 ' +
-    esc(
-      t.type ||
-      t.kind ||
-      'Transaction'
+    await sendGameMessage(
+      msg.chat.id,
+      welcomeText(user.firstName)
     );
 
+    return;
+  }
+
+  if (text === "/game") {
+    user.notificationsEnabled = true;
+
+    saveDB();
+
+    await sendGameMessage(
+      msg.chat.id,
+      "🎮 Your game is ready. Tap below to play."
+    );
+
+    return;
+  }
+
+  if (text === "/stop") {
+    user.notificationsEnabled = false;
+
+    saveDB();
+
+    await telegram("sendMessage", {
+      chat_id: msg.chat.id,
+      text:
+        "🔕 Daily notifications are now OFF.\n\n" +
+        "Send /start anytime to turn them back ON."
+    });
+
+    return;
+  }
+
+  if (text === "/help") {
+    await telegram("sendMessage", {
+      chat_id: msg.chat.id,
+      text:
+        "🎮 Commands\n\n" +
+        "/start — open the game\n" +
+        "/game — play now\n" +
+        "/stop — stop daily notifications\n" +
+        "/help — show this help"
+    });
+
+    return;
+  }
+
+  await sendGameMessage(
+    msg.chat.id,
+    "🎮 The game is ready. Tap PLAY NOW below."
+  );
 }
 
+let polling = false;
+let offset = 0;
 
-function transactionAmount(t){
+async function pollTelegram() {
+  if (polling) return;
 
-  if(t.amountKobo != null)
-    return Number(t.amountKobo)/100;
+  polling = true;
 
+  try {
+    await telegram("deleteWebhook", {
+      drop_pending_updates: false
+    });
+  } catch (e) {
+    console.error(
+      "deleteWebhook:",
+      e.message
+    );
+  }
 
-  return Number(
-    t.amount || 0
+  while (true) {
+    try {
+      const updates = await telegram(
+        "getUpdates",
+        {
+          offset,
+          timeout: 50,
+          allowed_updates: ["message"]
+        }
+      );
+
+      for (const update of updates) {
+        offset = update.update_id + 1;
+
+        try {
+          await handleUpdate(update);
+        } catch (e) {
+          console.error(
+            "Update error:",
+            e.message
+          );
+        }
+      }
+    } catch (e) {
+      console.error(
+        "Telegram polling:",
+        e.message
+      );
+
+      await new Promise(resolve =>
+        setTimeout(resolve, 3000)
+      );
+    }
+  }
+}
+
+function lagosParts() {
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        timeZone: TIMEZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }
+    ).formatToParts(new Date());
+
+  const get = type =>
+    parts.find(
+      p => p.type === type
+    )?.value || "";
+
+  return {
+    date:
+      `${get("year")}-` +
+      `${get("month")}-` +
+      `${get("day")}`,
+
+    time:
+      `${get("hour")}:` +
+      `${get("minute")}`
+  };
+}
+
+async function sendSlot(slot) {
+  const users =
+    Object.values(db.users);
+
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const user of users) {
+    if (
+      !user.notificationsEnabled ||
+      user.blocked
+    ) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      await sendGameMessage(
+        user.chatId,
+        slot.text,
+        slot.button
+      );
+
+      sent++;
+    } catch (e) {
+      failed++;
+
+      const message =
+        String(e.message || "")
+          .toLowerCase();
+
+      if (
+        message.includes(
+          "blocked by the user"
+        ) ||
+        message.includes(
+          "chat not found"
+        ) ||
+        message.includes(
+          "user is deactivated"
+        )
+      ) {
+        user.blocked = true;
+        user.notificationsEnabled = false;
+      }
+    }
+
+    await new Promise(resolve =>
+      setTimeout(resolve, 60)
+    );
+  }
+
+  saveDB();
+
+  return {
+    sent,
+    skipped,
+    failed
+  };
+}
+
+async function scheduler() {
+  const {
+    date,
+    time
+  } = lagosParts();
+
+  for (const slot of db.slots) {
+    if (!slot.enabled) continue;
+
+    if (slot.time !== time) continue;
+
+    if (slot.lastSentDate === date) {
+      continue;
+    }
+
+    slot.lastSentDate = date;
+
+    saveDB();
+
+    try {
+      const result =
+        await sendSlot(slot);
+
+      console.log(
+        `Notification ${slot.id} ${date} ${time}:`,
+        result
+      );
+    } catch (e) {
+      console.error(
+        "Scheduled notification failed:",
+        e.message
+      );
+    }
+  }
+}
+
+setInterval(
+  scheduler,
+  30000
+);
+
+function sendJson(
+  res,
+  status,
+  data
+) {
+  const body =
+    JSON.stringify(data);
+
+  res.writeHead(status, {
+    "Content-Type":
+      "application/json; charset=utf-8",
+    "Cache-Control":
+      "no-store",
+    "Access-Control-Allow-Origin":
+      "*"
+  });
+
+  res.end(body);
+}
+
+function readBody(req) {
+  return new Promise(
+    (resolve, reject) => {
+      let data = "";
+
+      req.on(
+        "data",
+        chunk => {
+          data += chunk;
+
+          if (
+            data.length > 1000000
+          ) {
+            req.destroy();
+
+            reject(
+              new Error(
+                "Body too large"
+              )
+            );
+          }
+        }
+      );
+
+      req.on(
+        "end",
+        () => {
+          try {
+            resolve(
+              data
+                ? JSON.parse(data)
+                : {}
+            );
+          } catch {
+            reject(
+              new Error(
+                "Invalid JSON"
+              )
+            );
+          }
+        }
+      );
+
+      req.on(
+        "error",
+        reject
+      );
+    }
+  );
+}
+
+function authorized(
+  req,
+  url
+) {
+  const key =
+    req.headers["x-admin-key"] ||
+    url.searchParams.get("key");
+
+  return (
+    key &&
+    key === ADMIN_KEY
+  );
+}
+
+const server =
+  http.createServer(
+    async (req, res) => {
+      const url =
+        new URL(
+          req.url,
+          `http://${req.headers.host || "localhost"}`
+        );
+
+      if (
+        req.method === "OPTIONS"
+      ) {
+        res.writeHead(
+          204,
+          {
+            "Access-Control-Allow-Origin":
+              "*",
+            "Access-Control-Allow-Headers":
+              "Content-Type, X-Admin-Key",
+            "Access-Control-Allow-Methods":
+              "GET,POST,OPTIONS"
+          }
+        );
+
+        return res.end();
+      }
+
+      if (
+        url.pathname === "/health"
+      ) {
+        return sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            service:
+              "Crazy Crash Rockets Game Bot",
+            timezone:
+              TIMEZONE,
+            users:
+              Object.keys(
+                db.users
+              ).length
+          }
+        );
+      }
+
+      if (
+        url.pathname ===
+          "/admin/notifications" &&
+        req.method === "GET"
+      ) {
+        if (
+          !authorized(
+            req,
+            url
+          )
+        ) {
+          return sendJson(
+            res,
+            401,
+            {
+              ok: false,
+              error:
+                "Unauthorized"
+            }
+          );
+        }
+
+        const users =
+          Object.values(
+            db.users
+          );
+
+        return sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            timezone:
+              TIMEZONE,
+            gameUrl:
+              GAME_URL,
+            slots:
+              db.slots,
+            users: {
+              total:
+                users.length,
+
+              active:
+                users.filter(
+                  u =>
+                    u.notificationsEnabled &&
+                    !u.blocked
+                ).length,
+
+              blocked:
+                users.filter(
+                  u => u.blocked
+                ).length,
+
+              optedOut:
+                users.filter(
+                  u =>
+                    !u.notificationsEnabled &&
+                    !u.blocked
+                ).length
+            }
+          }
+        );
+      }
+
+      if (
+        url.pathname ===
+          "/admin/notifications-save" &&
+        req.method === "POST"
+      ) {
+        if (
+          !authorized(
+            req,
+            url
+          )
+        ) {
+          return sendJson(
+            res,
+            401,
+            {
+              ok: false,
+              error:
+                "Unauthorized"
+            }
+          );
+        }
+
+        try {
+          const body =
+            await readBody(req);
+
+          if (
+            !Array.isArray(
+              body.slots
+            )
+          ) {
+            return sendJson(
+              res,
+              400,
+              {
+                ok: false,
+                error:
+                  "slots must be an array"
+              }
+            );
+          }
+
+          db.slots =
+            [0, 1, 2].map(
+              i => {
+                const s =
+                  body.slots[i] ||
+                  {};
+
+                return {
+                  id: i + 1,
+
+                  enabled:
+                    s.enabled !==
+                    false,
+
+                  time:
+                    /^\d{2}:\d{2}$/.test(
+                      String(
+                        s.time || ""
+                      )
+                    )
+                      ? s.time
+                      : DEFAULT_SLOTS[i]
+                          .time,
+
+                  text:
+                    String(
+                      s.text || ""
+                    ).slice(
+                      0,
+                      4000
+                    ),
+
+                  button:
+                    String(
+                      s.button ||
+                        "🎮 PLAY NOW"
+                    ).slice(
+                      0,
+                      100
+                    ),
+
+                  lastSentDate:
+                    db.slots[i]
+                      ?.lastSentDate ||
+                    ""
+                };
+              }
+            );
+
+          saveDB();
+
+          return sendJson(
+            res,
+            200,
+            {
+              ok: true,
+              slots:
+                db.slots
+            }
+          );
+        } catch (e) {
+          return sendJson(
+            res,
+            400,
+            {
+              ok: false,
+              error:
+                e.message
+            }
+          );
+        }
+      }
+
+      if (
+        url.pathname ===
+          "/admin/notification-send-now" &&
+        req.method === "POST"
+      ) {
+        if (
+          !authorized(
+            req,
+            url
+          )
+        ) {
+          return sendJson(
+            res,
+            401,
+            {
+              ok: false,
+              error:
+                "Unauthorized"
+            }
+          );
+        }
+
+        try {
+          const body =
+            await readBody(req);
+
+          const index =
+            Number(
+              body.slot
+            );
+
+          const slot =
+            db.slots[index];
+
+          if (!slot) {
+            return sendJson(
+              res,
+              400,
+              {
+                ok: false,
+                error:
+                  "Invalid slot"
+              }
+            );
+          }
+
+          const result =
+            await sendSlot(
+              slot
+            );
+
+          return sendJson(
+            res,
+            200,
+            {
+              ok: true,
+              result
+            }
+          );
+        } catch (e) {
+          return sendJson(
+            res,
+            500,
+            {
+              ok: false,
+              error:
+                e.message
+            }
+          );
+        }
+      }
+
+      if (
+        url.pathname ===
+          "/admin/users" &&
+        req.method === "GET"
+      ) {
+        if (
+          !authorized(
+            req,
+            url
+          )
+        ) {
+          return sendJson(
+            res,
+            401,
+            {
+              ok: false,
+              error:
+                "Unauthorized"
+            }
+          );
+        }
+
+        const users =
+          Object.values(
+            db.users
+          ).map(u => ({
+            id: u.id,
+            chatId: u.chatId,
+            username:
+              u.username,
+            firstName:
+              u.firstName,
+            startedAt:
+              u.startedAt,
+            lastSeen:
+              u.lastSeen,
+            notificationsEnabled:
+              u.notificationsEnabled,
+            blocked:
+              u.blocked
+          }));
+
+        return sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            users
+          }
+        );
+      }
+
+      sendJson(
+        res,
+        404,
+        {
+          ok: false,
+          error:
+            "Not found"
+        }
+      );
+    }
   );
 
-}
-
-
-function renderTransactions(rows){
-
-  const box =
-    $('transactionsList');
-
-
-  if(!Array.isArray(rows) ||
-     !rows.length){
-
-    box.innerHTML =
-      '<div class="note">' +
-      'No transactions found.' +
-      '</div>';
-
-    return;
-  }
-
-
-  box.innerHTML =
-    rows.slice(0,100).map(t => {
-
-      const amount =
-        transactionAmount(t);
-
-
-      const positive =
-        t.amountKobo != null
-          ? Number(t.amountKobo) >= 0
-          : Number(t.amount || 0) >= 0;
-
-
-      const user =
-        t.userName ||
-        t.name ||
-        t.userId ||
-        'System';
-
-
-      return (
-
-        '<div class="tx">' +
-
-          '<div class="tx-top">' +
-
-            '<b>' +
-              transactionType(t) +
-            '</b>' +
-
-            '<span class="tx-amount ' +
-              (
-                positive
-                  ? 'win'
-                  : 'lose'
-              ) +
-            '">' +
-
-              (
-                positive
-                  ? '+'
-                  : '-'
-              ) +
-
-              money(
-                Math.abs(amount)
-              ) +
-
-            '</span>' +
-
-          '</div>' +
-
-          '<small>' +
-
-            'User: ' +
-            esc(user) +
-
-            '<br>' +
-
-            'Reference: ' +
-            esc(
-              t.reference ||
-              t.id ||
-              '—'
-            ) +
-
-            (
-              t.status
-
-                ?
-
-                '<br>Status: ' +
-                esc(t.status)
-
-                :
-
-                ''
-            ) +
-
-            (
-              t.createdAt
-
-                ?
-
-                '<br>' +
-                esc(
-                  new Date(
-                    t.createdAt
-                  ).toLocaleString()
-                )
-
-                :
-
-                ''
-            ) +
-
-          '</small>' +
-
-        '</div>'
-
-      );
-
-    }).join('');
-
-}
-
-
-async function loadTransactions(){
-
-  try{
-
-    const j =
-      await call(
-        'transactions'
-      );
-
-
-    if(!j.ok){
-
-      $('transactionsList').innerHTML =
-        '<div class="note" style="color:#ff6b8a">' +
-        esc(
-          j.error ||
-          'Could not load transactions.'
-        ) +
-        '</div>';
-
-      return;
-    }
-
-
-    const rows =
-      Array.isArray(j)
-        ? j
-        :
-      Array.isArray(j.transactions)
-        ? j.transactions
-        :
-      Array.isArray(j.data)
-        ? j.data
-        :
-      [];
-
-
-    renderTransactions(rows);
-
-  }catch(e){
-
-    $('transactionsList').innerHTML =
-      '<div class="note" style="color:#ff6b8a">' +
-      'Transaction endpoint unavailable.' +
-      '</div>';
-
-  }
-
-}
-
-
-$('refreshTransactions').onclick =
-  loadTransactions;
-
-
-/* =========================================================
-   CRASH TARGET CONTROL
-   ========================================================= */
-
-function parseTargets(text){
-
-  if(!text)
-    return [];
-
-
-  const matches =
-    text.match(
-      /\d+(?:\.\d+)?/g
-    ) || [];
-
-
-  return matches
-    .map(Number)
-    .filter(
-      n =>
-        Number.isFinite(n) &&
-        n >= 1.01
+loadDB();
+
+server.listen(
+  PORT,
+  () => {
+    console.log(
+      `Game Bot service running on port ${PORT}`
     );
 
-}
+    console.log(
+      `Game URL: ${GAME_URL}`
+    );
 
+    console.log(
+      `Timezone: ${TIMEZONE}`
+    );
 
-function renderTargetPreview(targets){
+    telegram("getMe")
+      .then(me => {
+        console.log(
+          `Telegram bot connected: @${me.username}`
+        );
 
-  const box =
-    $('targetPreview');
-
-
-  if(!targets.length){
-
-    box.innerHTML = '';
-
-    return;
-  }
-
-
-  box.innerHTML =
-    targets.map(
-      n =>
-        '<span class="target-chip">' +
-        n.toFixed(2) +
-        'x</span>'
-    ).join('');
-
-}
-
-
-function loadLocalTargets(){
-
-  try{
-
-    const raw =
-      localStorage.getItem(
-        'crash_demo_v4'
-      );
-
-
-    if(!raw)
-      return;
-
-
-    const saved =
-      JSON.parse(raw);
-
-
-    if(
-      saved &&
-      Array.isArray(
-        saved.customTargets
+        return telegram(
+          "setMyCommands",
+          {
+            commands: [
+              {
+                command:
+                  "start",
+                description:
+                  "Open the game"
+              },
+              {
+                command:
+                  "game",
+                description:
+                  "Play now"
+              },
+              {
+                command:
+                  "stop",
+                description:
+                  "Stop daily notifications"
+              },
+              {
+                command:
+                  "help",
+                description:
+                  "Show help"
+              }
+            ]
+          }
+        );
+      })
+      .then(
+        () =>
+          pollTelegram()
       )
-    ){
-
-      $('targetInput').value =
-        saved.customTargets.join(', ');
-
-
-      renderTargetPreview(
-        saved.customTargets
-      );
-
-    }
-
-  }catch(e){}
-
-}
-
-
-function saveLocalTargets(targets){
-
-  try{
-
-    const raw =
-      localStorage.getItem(
-        'crash_demo_v4'
-      );
-
-
-    let saved = {};
-
-
-    if(raw){
-
-      try{
-
-        saved =
-          JSON.parse(raw) || {};
-
-      }catch(e){
-
-        saved = {};
-
-      }
-
-    }
-
-
-    saved.customTargets =
-      targets;
-
-
-    localStorage.setItem(
-      'crash_demo_v4',
-      JSON.stringify(saved)
-    );
-
-  }catch(e){}
-
-}
-
-
-/* =========================
-   UPDATE TARGETS
-   ========================= */
-
-$('updateTargets').onclick =
-  async () => {
-
-    const status =
-      $('targetStatus');
-
-
-    const targets =
-      parseTargets(
-        $('targetInput').value
-      );
-
-
-    if(!targets.length){
-
-      status.textContent =
-        '⚠️ Enter at least one valid target.';
-
-      status.style.color =
-        '#ff6b8a';
-
-      return;
-    }
-
-
-    const uniqueTargets =
-      [
-        ...new Set(
-          targets.map(
-            n =>
-              Number(
-                n.toFixed(2)
-              )
-          )
+      .catch(e =>
+        console.error(
+          "Telegram setup:",
+          e.message
         )
-      ];
-
-
-    saveLocalTargets(
-      uniqueTargets
-    );
-
-
-    renderTargetPreview(
-      uniqueTargets
-    );
-
-
-    status.textContent =
-      '⏳ Updating server...';
-
-    status.style.color =
-      '#ffd02d';
-
-
-    try{
-
-      const result =
-        await call(
-          'targets',
-          {
-            targets:
-              uniqueTargets
-          }
-        );
-
-
-      if(result.ok){
-
-        status.textContent =
-          '✅ Crash targets updated successfully.';
-
-        status.style.color =
-          '#19e96f';
-
-      }else{
-
-        status.textContent =
-          '⚠️ Server: ' +
-          (
-            result.error ||
-            'not available'
-          );
-
-        status.style.color =
-          '#ffd02d';
-
-      }
-
-    }catch(e){
-
-      status.textContent =
-        '⚠️ Server connection unavailable.';
-
-      status.style.color =
-        '#ffd02d';
-
-    }
-
-  };
-
-
-/* =========================
-   CLEAR TARGETS
-   ========================= */
-
-$('clearTargets').onclick =
-  async () => {
-
-    $('targetInput').value = '';
-
-    $('targetPreview').innerHTML = '';
-
-
-    try{
-
-      localStorage.removeItem(
-        'crash_demo_v4'
       );
-
-    }catch(e){}
-
-
-    $('targetStatus').textContent =
-      '🗑️ Clearing server targets...';
-
-    $('targetStatus').style.color =
-      '#ffd02d';
-
-
-    try{
-
-      const result =
-        await call(
-          'targets',
-          {
-            targets:[]
-          }
-        );
-
-
-      if(result.ok){
-
-        $('targetStatus').textContent =
-          '🗑️ Crash targets cleared successfully.';
-
-        $('targetStatus').style.color =
-          '#19e96f';
-
-      }else{
-
-        $('targetStatus').textContent =
-          '⚠️ ' +
-          (
-            result.error ||
-            'Could not clear server targets.'
-          );
-
-        $('targetStatus').style.color =
-          '#ff6b8a';
-
-      }
-
-    }catch(e){
-
-      $('targetStatus').textContent =
-        '⚠️ Server connection unavailable.';
-
-      $('targetStatus').style.color =
-        '#ff6b8a';
-
-    }
-
-  };
-
-
-/* =========================
-   START
-   ========================= */
-
-loadLocalTargets();
-
-
-if(key){
-
-  $('key').value =
-    key;
-
-  open();
-
-}
-
-</script>
-
-</body>
-  </html>
+  }
+);
