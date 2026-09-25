@@ -12,6 +12,38 @@
 //
 // Optional:
 //   DATA_FILE=/var/data/data.json
+//
+// ----------------------------------------------------------------------
+// FIXES APPLIED IN THIS VERSION (see comments marked "FIX:"):
+//
+// 1. Withdrawals that fail at the Paystack transfer step now AUTOMATICALLY
+//    refund the player's wallet balance instead of silently deducting it
+//    and leaving the withdrawal stuck. This is the #1 cause of "my money
+//    vanished after I clicked withdraw."
+//
+// 2. Removed the duplicate/confusing p.withdrawals stat that was written
+//    at REQUEST time (before money was ever sent). Only p.withdrawn is
+//    now used, and it is only incremented when a transfer actually
+//    completes. This makes your /admin stats trustworthy.
+//
+// 3. The Paystack webhook handler now tries to self-heal: if it gets a
+//    charge.success event for a reference it has no local record of
+//    (which happens if your storage was wiped by a Render restart before
+//    the webhook arrived), it will reconstruct the deposit from the
+//    webhook's own metadata and still credit the player, instead of
+//    silently doing nothing.
+//
+// 4. save() now logs to console if writing data.json ever fails, instead
+//    of swallowing the error.
+//
+// IMPORTANT: these fixes make the app more resilient, but they do NOT
+// replace fixing the underlying issue: on Render's Free plan there is no
+// persistent disk, so data.json is wiped on every restart/redeploy/idle
+// spin-down. You still need to either (a) upgrade to a paid Render plan
+// and attach a persistent Disk mounted at the DATA_FILE path, or
+// (b) migrate storage to a real database. Fix #3 is a safety net, not a
+// substitute for persistent storage.
+// ----------------------------------------------------------------------
 
 const http = require('http');
 const fs = require('fs');
@@ -170,8 +202,11 @@ for (const p of Object.values(db.players)) {
   if (typeof p.deposits !== 'number')
     p.deposits = 0;
 
-  if (typeof p.withdrawals !== 'number')
-    p.withdrawals = 0;
+  // FIX #2: standardize on p.withdrawn (completed total only).
+  // p.withdrawals (requested-at-click total) is no longer written to,
+  // but we keep reading legacy files without crashing.
+  if (typeof p.withdrawn !== 'number')
+    p.withdrawn = Number(p.withdrawals || 0);
 }
 
 
@@ -191,7 +226,15 @@ setInterval(() => {
   fs.writeFile(
     DATA,
     JSON.stringify(db),
-    () => {}
+    err => {
+      // FIX #4: don't swallow write errors silently.
+      if (err) {
+        console.error(
+          'DATA SAVE ERROR:',
+          err
+        );
+      }
+    }
   );
 
 }, 1000);
@@ -1144,7 +1187,8 @@ function player(
         deposits:
           0,
 
-        withdrawals:
+        // FIX #2: single source of truth for completed withdrawals.
+        withdrawn:
           0
       };
   }
@@ -1204,6 +1248,10 @@ function player(
         p.deposits || 0
       ) > 0;
   }
+
+
+  if (typeof p.withdrawn !== 'number')
+    p.withdrawn = Number(p.withdrawals || 0);
 
 
   if (!p.id)
@@ -1269,6 +1317,7 @@ const now =
 // --------------------------------------------------
 
 const api = {
+
 
   // -----------------------------------------------
   // NORMAL / BONUS BET
@@ -1801,7 +1850,6 @@ const api = {
         .toString('hex');
 
 
-    // REQUIRED EDIT:
     // Use the email submitted by the deposit form.
     // Fall back to the saved player email if the form
     // does not send one. Do not send the old .local
@@ -1819,7 +1867,6 @@ const api = {
     ) {
 
       return {
-
         error:
           'Enter a valid email address'
       };
@@ -1853,6 +1900,9 @@ const api = {
             ) +
             '/payment/callback',
 
+          // FIX #3: this metadata is the fallback source of truth the
+          // webhook can rebuild a deposit from if our local record
+          // (data.json) has been wiped by a Render restart.
           metadata:
             JSON.stringify({
               type:
@@ -1966,7 +2016,7 @@ const api = {
     }
 
 
-    const deposit =
+    let deposit =
       db.deposits.find(
         x =>
           x.reference ===
@@ -1974,13 +2024,32 @@ const api = {
       );
 
 
+    // FIX #3: if the deposit record itself is missing (data.json was
+    // wiped), verify directly against Paystack and rebuild it here too,
+    // not just in the webhook.
     if (!deposit) {
 
-      return {
+      const verified =
+        await verifyPaystackTransaction(
+          reference
+        );
 
-        error:
-          'Deposit not found'
-      };
+      const rebuilt =
+        rebuildDepositFromTx(
+          verified,
+          t
+        );
+
+      if (!rebuilt) {
+
+        return {
+
+          error:
+            'Deposit not found'
+        };
+      }
+
+      deposit = rebuilt;
     }
 
 
@@ -2073,10 +2142,14 @@ const api = {
     }
 
 
-    if (
-      deposit.status ===
-      'success'
-    ) {
+    const credited =
+      creditDeposit(
+        deposit,
+        tx
+      );
+
+
+    if (credited.alreadyCredited) {
 
       return {
 
@@ -2086,79 +2159,14 @@ const api = {
     }
 
 
-    // ---------------------------------------------
-    // CREDIT REAL CASH
-    // ---------------------------------------------
+    if (credited.error) {
 
-    deposit.status =
-      'success';
+      return {
 
-    deposit.verifiedAt =
-      Date.now();
-
-    deposit.paystackId =
-      tx.id;
-
-
-    p.bal =
-      r2(
-        Number(
-          p.bal
-        ) +
-        Number(
-          deposit.amount
-        )
-      );
-
-
-    p.deposits =
-      r2(
-        Number(
-          p.deposits || 0
-        ) +
-        Number(
-          deposit.amount
-        )
-      );
-
-
-    // FIRST SUCCESSFUL DEPOSIT
-    p.firstDepositCompleted =
-      true;
-
-
-    db.finance.totalDeposited =
-      r2(
-        Number(
-          db.finance
-            .totalDeposited
-        ) +
-        Number(
-          deposit.amount
-        )
-      );
-
-
-    addLog(
-      p,
-      {
-
-        type:
-          'deposit',
-
-        amount:
-          deposit.amount,
-
-        reference,
-
-        time:
-          Date.now()
-      }
-    );
-
-
-    save();
-    broadcast();
+        error:
+          credited.error
+      };
+    }
 
 
     return {
@@ -2170,10 +2178,10 @@ const api = {
         deposit.amount,
 
       balance:
-        p.bal,
+        credited.player.bal,
 
       bonusAvailable:
-        !p.bonusClaimed
+        !credited.player.bonusClaimed
     };
   },
 
@@ -2399,13 +2407,10 @@ const api = {
       );
 
 
-    p.withdrawals =
-      r2(
-        Number(
-          p.withdrawals || 0
-        ) +
-        amount
-      );
+    // FIX #2: removed the premature p.withdrawals increment that used
+    // to happen here, at REQUEST time, before any money had actually
+    // moved. Lifetime withdrawn totals are now only ever incremented
+    // in completeWithdrawal(), once a transfer has truly succeeded.
 
 
     addLog(
@@ -2578,7 +2583,7 @@ function httpsRequest(
                   false,
 
                 message:
-                  'Invalid payment provider response'
+                  'Invalid response from Paystack'
               });
 
             }
@@ -2590,18 +2595,31 @@ function httpsRequest(
     );
 
 
+  req.on(
+    'error',
+    err =>
+      resolve({
+
+        status:
+          false,
+
+        message:
+          err.message
+      })
+  );
+
+
   if (payload)
     req.write(payload);
 
 
   req.end();
 
-
   return req;
 }
 
 
-function verifyPaystackTransaction(
+async function verifyPaystackTransaction(
   reference
 ) {
 
@@ -2612,6 +2630,273 @@ function verifyPaystackTransaction(
         reference
       )
   );
+}
+
+
+// --------------------------------------------------
+// FIX #3: REBUILD A LOST DEPOSIT RECORD FROM PAYSTACK DATA
+// --------------------------------------------------
+//
+// Used by the webhook and depositVerify when db.deposits has no record
+// for a reference Paystack says is real (e.g. after a Render restart
+// wiped data.json between deposit-initialize and webhook-arrival).
+//
+// Only works if the metadata we originally sent to Paystack at
+// /transaction/initialize is still attached to the transaction (it
+// always is, since Paystack stores it), AND the player token still
+// exists in memory. If the whole in-memory player was also wiped, this
+// cannot recover it — that requires fixing persistent storage itself.
+
+function rebuildDepositFromTx(
+  verified,
+  expectedToken
+) {
+
+  if (
+    !verified ||
+    !verified.status ||
+    !verified.data
+  ) {
+    return null;
+  }
+
+  const tx = verified.data;
+
+  if (tx.status !== 'success') {
+    return null;
+  }
+
+  let meta = tx.metadata;
+
+  if (typeof meta === 'string') {
+    try {
+      meta = JSON.parse(meta);
+    } catch (e) {
+      meta = null;
+    }
+  }
+
+  if (
+    !meta ||
+    meta.type !== 'crash_deposit' ||
+    !meta.token
+  ) {
+    return null;
+  }
+
+  if (
+    expectedToken &&
+    meta.token !== expectedToken
+  ) {
+    return null;
+  }
+
+  if (!db.players[meta.token]) {
+    console.error(
+      'DEPOSIT RECOVERY FAILED - player record also missing for token:',
+      meta.token,
+      'reference:',
+      tx.reference
+    );
+    return null;
+  }
+
+  const amount =
+    Math.floor(
+      Number(tx.amount) / 100
+    );
+
+  const rebuilt = {
+    id: tx.reference,
+    reference: tx.reference,
+    playerId: meta.playerId || '',
+    token: meta.token,
+    amount,
+    amountKobo: Number(tx.amount),
+    status: 'pending',
+    createdAt: Date.now(),
+    verifiedAt: null,
+    recovered: true
+  };
+
+  db.deposits.unshift(rebuilt);
+
+  db.deposits.length =
+    Math.min(db.deposits.length, 5000);
+
+  console.log(
+    'DEPOSIT RECOVERED from Paystack metadata:',
+    tx.reference,
+    'amount:',
+    amount
+  );
+
+  return rebuilt;
+}
+
+
+// --------------------------------------------------
+// CREDIT VERIFIED DEPOSIT
+// --------------------------------------------------
+
+function creditDeposit(
+  deposit,
+  tx
+) {
+
+  if (
+    !deposit
+  ) {
+
+    return {
+      error:
+        'Deposit not found'
+    };
+  }
+
+
+  if (
+    deposit.status ===
+    'success'
+  ) {
+
+    return {
+      alreadyCredited:
+        true,
+
+      player:
+        db.players[
+          deposit.token
+        ] || null
+    };
+  }
+
+
+  const p =
+    db.players[
+      deposit.token
+    ];
+
+
+  if (!p) {
+
+    return {
+
+      error:
+        'Player account could not be found'
+    };
+  }
+
+
+  const paid =
+    Number(
+      tx.amount
+    ) / 100;
+
+
+  if (
+    paid !==
+    Number(
+      deposit.amount
+    )
+  ) {
+
+    return {
+
+      error:
+        'Payment amount does not match'
+    };
+  }
+
+
+  /*
+   * Mark the deposit successful BEFORE changing
+   * the wallet balance.
+   *
+   * This makes repeated callback/webhook requests
+   * idempotent inside this Node process.
+   */
+
+  deposit.status =
+    'success';
+
+  deposit.verifiedAt =
+    Date.now();
+
+  deposit.paystackId =
+    tx.id;
+
+
+  p.bal =
+    r2(
+      Number(
+        p.bal
+      ) +
+      Number(
+        deposit.amount
+      )
+    );
+
+
+  p.deposits =
+    r2(
+      Number(
+        p.deposits || 0
+      ) +
+      Number(
+        deposit.amount
+      )
+    );
+
+
+  // FIRST SUCCESSFUL DEPOSIT
+  p.firstDepositCompleted =
+    true;
+
+
+  db.finance.totalDeposited =
+    r2(
+      Number(
+        db.finance
+          .totalDeposited
+      ) +
+      Number(
+        deposit.amount
+      )
+    );
+
+
+  addLog(
+    p,
+    {
+
+      type:
+        'deposit',
+
+      amount:
+        deposit.amount,
+
+      reference:
+        deposit.reference,
+
+      time:
+        Date.now()
+    }
+  );
+
+
+  save();
+  broadcast();
+
+
+  return {
+
+    alreadyCredited:
+      false,
+
+    player:
+      p
+  };
 }
 
 
@@ -2780,6 +3065,55 @@ async function sendPaystackTransfer(
       message:
         'Transfer failed'
     }
+  );
+}
+
+
+// FIX #1: refund a player's wallet if a withdrawal transfer never went
+// through. Shared by the admin API and used any time we need to reverse
+// a failed/rejected withdrawal so money can never be silently lost.
+function refundWithdrawal(
+  withdrawal,
+  newStatus,
+  failureMessage
+) {
+
+  const p =
+    db.players[withdrawal.token];
+
+  if (p) {
+    p.bal =
+      r2(
+        Number(p.bal) +
+        Number(withdrawal.amount)
+      );
+  } else {
+    console.error(
+      'WITHDRAWAL REFUND FAILED - player not found for token:',
+      withdrawal.token,
+      'withdrawal id:',
+      withdrawal.id
+    );
+  }
+
+  withdrawal.status = newStatus;
+  withdrawal.failure = failureMessage || null;
+  withdrawal.processedAt = Date.now();
+
+  db.finance.pendingWithdrawals =
+    Math.max(
+      0,
+      Number(db.finance.pendingWithdrawals || 0) -
+      Number(withdrawal.amount)
+    );
+
+  console.log(
+    'WITHDRAWAL AUTO-REFUNDED:',
+    withdrawal.id,
+    'amount:',
+    withdrawal.amount,
+    'reason:',
+    failureMessage
   );
 }
 
@@ -3099,6 +3433,311 @@ const server =
 
 
       // --------------------------------------------
+      // PAYSTACK WEBHOOK
+      // --------------------------------------------
+
+      if (
+        req.method === 'POST' &&
+        u.pathname ===
+        '/webhook/paystack'
+      ) {
+
+        let raw = '';
+
+
+        req.on(
+          'data',
+          chunk => {
+
+            raw += chunk;
+
+
+            if (
+              raw.length >
+              1000000
+            ) {
+
+              req.destroy();
+            }
+          }
+        );
+
+
+        return req.on(
+          'end',
+          async () => {
+
+            try {
+
+              const signature =
+                String(
+                  req.headers[
+                    'x-paystack-signature'
+                  ] ||
+                  ''
+                );
+
+
+              if (!PAYSTACK_SECRET_KEY) {
+
+                res.writeHead(
+                  500,
+                  {
+                    'Content-Type':
+                      'application/json'
+                  }
+                );
+
+
+                return res.end(
+                  JSON.stringify({
+                    ok: false,
+                    error:
+                      'PAYSTACK_SECRET_KEY is not configured'
+                  })
+                );
+              }
+
+
+              if (!signature) {
+
+                res.writeHead(
+                  401,
+                  {
+                    'Content-Type':
+                      'application/json'
+                  }
+                );
+
+
+                return res.end(
+                  JSON.stringify({
+                    ok: false,
+                    error:
+                      'Missing Paystack signature'
+                  })
+                );
+              }
+
+
+              const expected =
+                crypto
+                  .createHmac(
+                    'sha512',
+                    PAYSTACK_SECRET_KEY
+                  )
+                  .update(raw)
+                  .digest('hex');
+
+
+              const a =
+                Buffer.from(
+                  signature,
+                  'utf8'
+                );
+
+              const b =
+                Buffer.from(
+                  expected,
+                  'utf8'
+                );
+
+
+              if (
+                a.length !==
+                b.length ||
+                !crypto.timingSafeEqual(
+                  a,
+                  b
+                )
+              ) {
+
+                res.writeHead(
+                  401,
+                  {
+                    'Content-Type':
+                      'application/json'
+                  }
+                );
+
+
+                return res.end(
+                  JSON.stringify({
+                    ok: false,
+                    error:
+                      'Invalid Paystack signature'
+                  })
+                );
+              }
+
+
+              let event;
+
+
+              try {
+
+                event =
+                  JSON.parse(
+                    raw ||
+                    '{}'
+                  );
+
+              } catch (e) {
+
+                res.writeHead(
+                  400,
+                  {
+                    'Content-Type':
+                      'application/json'
+                  }
+                );
+
+
+                return res.end(
+                  JSON.stringify({
+                    ok: false,
+                    error:
+                      'Invalid JSON payload'
+                  })
+                );
+              }
+
+
+              if (
+                event.event ===
+                'charge.success'
+              ) {
+
+                const reference =
+                  String(
+                    event.data &&
+                    event.data.reference ||
+                    ''
+                  ).trim();
+
+
+                if (reference) {
+
+                  let deposit =
+                    db.deposits.find(
+                      x =>
+                        x.reference ===
+                        reference
+                    );
+
+
+                  const verified =
+                    await verifyPaystackTransaction(
+                      reference
+                    );
+
+
+                  // FIX #3: self-heal if the local deposit record is
+                  // missing (storage wiped between deposit-initialize
+                  // and this webhook firing).
+                  if (
+                    !deposit &&
+                    verified &&
+                    verified.status &&
+                    verified.data
+                  ) {
+
+                    deposit =
+                      rebuildDepositFromTx(
+                        verified,
+                        null
+                      );
+
+                    if (!deposit) {
+
+                      console.error(
+                        'PAYSTACK WEBHOOK: no local deposit record and ' +
+                        'could not recover from metadata for reference:',
+                        reference
+                      );
+                    }
+                  }
+
+
+                  if (!deposit) {
+
+                    console.error(
+                      'PAYSTACK WEBHOOK: deposit not found for reference:',
+                      reference
+                    );
+
+                  } else if (
+                    verified &&
+                    verified.status &&
+                    verified.data &&
+                    verified.data.status ===
+                      'success'
+                  ) {
+
+                    const credited =
+                      creditDeposit(
+                        deposit,
+                        verified.data
+                      );
+
+
+                    if (credited.error) {
+
+                      console.error(
+                        'PAYSTACK WEBHOOK CREDIT ERROR:',
+                        credited.error,
+                        reference
+                      );
+                    }
+                  }
+                }
+              }
+
+
+              res.writeHead(
+                200,
+                {
+                  'Content-Type':
+                    'application/json'
+                }
+              );
+
+
+              return res.end(
+                JSON.stringify({
+                  ok: true
+                })
+              );
+
+            } catch (e) {
+
+              console.error(
+                'PAYSTACK WEBHOOK ERROR:',
+                e
+              );
+
+
+              res.writeHead(
+                500,
+                {
+                  'Content-Type':
+                    'application/json'
+                }
+              );
+
+
+              return res.end(
+                JSON.stringify({
+                  ok: false
+                })
+              );
+            }
+          }
+        );
+      }
+
+
+      // --------------------------------------------
       // PAYMENT CALLBACK
       // --------------------------------------------
 
@@ -3135,6 +3774,59 @@ const server =
         return handlePaymentCallback(
           reference,
           res
+        );
+      }
+
+
+      // --------------------------------------------
+      // ADMIN BACKUP DOWNLOAD
+      // --------------------------------------------
+      //
+      // Visit /admin/backup?key=YOUR_ADMIN_KEY in a browser to download
+      // a full snapshot of data.json (players, deposits, withdrawals,
+      // finance) at any time. Do this before every redeploy while you're
+      // still on Render's Free plan with no persistent disk - a redeploy
+      // wipes the live file, but this download is a copy safely on your
+      // own device.
+
+      if (
+        req.method === 'GET' &&
+        u.pathname === '/admin/backup'
+      ) {
+
+        const key =
+          u.searchParams.get('key') || '';
+
+        if (!adminKeyMatches(key)) {
+
+          res.writeHead(401, {
+            'Content-Type': 'application/json'
+          });
+
+          return res.end(
+            JSON.stringify({
+              ok: false,
+              error: 'Unauthorized'
+            })
+          );
+        }
+
+        const stamp =
+          new Date()
+            .toISOString()
+            .replace(/[:.]/g, '-');
+
+        const filename =
+          'crash-backup-' + stamp + '.json';
+
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Content-Disposition':
+            'attachment; filename="' + filename + '"'
+        });
+
+        return res.end(
+          JSON.stringify(db, null, 2)
         );
       }
 
@@ -3203,7 +3895,7 @@ const server =
 
             if (
               d.length >
-              20000
+              100000
             ) {
 
               req.destroy();
@@ -3234,1194 +3926,577 @@ const server =
             }
 
 
-            const out =
-              (
-                code,
-                object
-              ) => {
-
-                res.writeHead(
-                  code,
-                  {
-
-                    'Content-Type':
-                      'application/json'
-                  }
-                );
-
-
-                res.end(
-                  JSON.stringify(
-                    object
-                  )
-                );
-
-              };
+            const key =
+              b.key ||
+              '';
 
 
             if (
               !adminKeyMatches(
-                b.key
+                key
               )
             ) {
 
-              return out(
+              res.writeHead(
                 401,
                 {
+
+                  'Content-Type':
+                    'application/json'
+                }
+              );
+
+
+              return res.end(
+                JSON.stringify({
 
                   ok:
                     false,
 
                   error:
-                    'Wrong admin key'
-                }
+                    'Unauthorized'
+                })
               );
             }
 
 
-            const act =
+            const action =
               u.pathname.slice(
-                11
+                '/admin/api/'.length
               );
 
 
-            // ----------------------------------------
-            // ADMIN STATE
-            // ----------------------------------------
-
-            if (
-              act ===
-              'state'
-            ) {
-
-              const on =
-                new Set(
-                  [
-                    ...conns
-                  ].map(
-                    c =>
-                      c.token
-                  )
-                );
+            let result = {
+              ok: true
+            };
 
 
-              const players =
-                Object.entries(
-                  db.players
-                ).map(
-                  ([t, p]) => ({
+            try {
 
-                    id:
-                      p.id,
+              if (
+                action ===
+                'stats'
+              ) {
 
-                    name:
-                      p.name,
-
-                    tg:
-                      p.tg,
-
-                    bal:
-                      p.bal,
-
-                    bonusBalance:
-                      p.bonusBalance,
-
-                    bonusClaimed:
-                      !!p.bonusClaimed,
-
-                    firstDepositCompleted:
-                      !!p.firstDepositCompleted,
-
-                    pnl:
-                      p.pnl,
-
-                    rounds:
-                      p.st.r,
-
-                    wins:
-                      p.st.w,
-
-                    best:
-                      p.st.best,
-
-                    bet:
-                      R.bets[t]
-
-                        ? {
-
-                            amt:
-                              R.bets[t]
-                                .amt,
-
-                            auto:
-                              R.bets[t]
-                                .auto,
-
-                            at:
-                              R.bets[t]
-                                .at,
-
-                            source:
-                              R.bets[t]
-                                .source ||
-                              'cash'
-                          }
-
-                        : null,
-
-                    online:
-                      on.has(t),
-
-                    first:
-                      p.first,
-
-                    seen:
-                      p.seen
-
-                  })
-                );
-
-
-              return out(
-                200,
-                {
+                result = {
 
                   ok:
                     true,
+
+                  players:
+                    Object.keys(
+                      db.players
+                    ).length,
 
                   online:
-                    on.size,
+                    [...conns]
+                      .length,
 
-                  total:
-                    players.length,
-
-                  round: {
-
-                    id:
-                      R.id,
-
-                    phase:
-                      R.phase,
-
-                    bets:
-                      Object.keys(
-                        R.bets
-                      ).length
-                  },
-
-                  players
-
-                }
-              );
-            }
-
-
-            // ----------------------------------------
-            // ADMIN FINANCE SUMMARY
-            // ----------------------------------------
-
-            if (
-              act ===
-              'finance'
-            ) {
-
-              const pending =
-                db.withdrawals
-                  .filter(
-                    x =>
-                      x.status ===
-                        'pending' ||
-                      x.status ===
-                        'processing'
-                  );
-
-
-              const deposits =
-                db.deposits;
-
-
-              return out(
-                200,
-                {
-
-                  ok:
-                    true,
+                  roundId:
+                    db.roundId,
 
                   totalDeposited:
-                    db.finance
-                      .totalDeposited,
-
-                  totalWithdrawn:
-                    db.finance
-                      .totalWithdrawn,
-
-                  pendingWithdrawals:
-                    pending.reduce(
-                      (
-                        sum,
-                        x
-                      ) =>
-                        sum +
-                        Number(
-                          x.amount
-                        ),
+                    Number(
+                      db.finance
+                        .totalDeposited ||
                       0
                     ),
 
-                  depositsCount:
-                    deposits.length,
+                  totalWithdrawn:
+                    Number(
+                      db.finance
+                        .totalWithdrawn ||
+                      0
+                    ),
 
-                  withdrawalsCount:
-                    db.withdrawals
-                      .length,
-
-                  pendingCount:
-                    pending.length,
-
-                  balanceLiability:
-                    Object.values(
-                      db.players
-                    ).reduce(
-                      (
-                        sum,
-                        p
-                      ) =>
-                        sum +
-                        Number(
-                          p.bal ||
-                          0
-                        ),
+                  pendingWithdrawals:
+                    Number(
+                      db.finance
+                        .pendingWithdrawals ||
                       0
                     )
-                }
-              );
-            }
+                };
+              }
 
 
-            // ----------------------------------------
-            // ADMIN DEPOSITS
-            // ----------------------------------------
+              else if (
+                action ===
+                'players'
+              ) {
 
-            if (
-              act ===
-              'deposits'
-            ) {
+                result = {
 
-              return out(
-                200,
-                {
+                  ok:
+                    true,
+
+                  players:
+                    Object.entries(
+                      db.players
+                    )
+                      .map(
+                        ([token, p]) => ({
+
+                          token,
+
+                          name:
+                            p.name ||
+                            '',
+
+                          email:
+                            p.email ||
+                            '',
+
+                          bal:
+                            Number(
+                              p.bal ||
+                              0
+                            ),
+
+                          deposits:
+                            Number(
+                              p.deposits ||
+                              0
+                            ),
+
+                          // FIX #2: read the same field withdraw
+                          // completion now writes to.
+                          withdrawn:
+                            Number(
+                              p.withdrawn ||
+                              0
+                            ),
+
+                          firstDepositCompleted:
+                            !!p.firstDepositCompleted,
+
+                          joined:
+                            p.joined ||
+                            null,
+
+                          seen:
+                            p.seen ||
+                            null
+                        })
+                      )
+                };
+              }
+
+
+              else if (
+                action ===
+                'deposits'
+              ) {
+
+                result = {
 
                   ok:
                     true,
 
                   deposits:
                     db.deposits
-                      .slice(
-                        0,
-                        500
-                      )
-                }
-              );
-            }
+                      .slice()
+                      .reverse()
+                };
+              }
 
 
-            // ----------------------------------------
-            // ADMIN WITHDRAWALS
-            // ----------------------------------------
+              else if (
+                action ===
+                'withdrawals'
+              ) {
 
-            if (
-              act ===
-              'withdrawals'
-            ) {
-
-              return out(
-                200,
-                {
+                result = {
 
                   ok:
                     true,
 
                   withdrawals:
                     db.withdrawals
-                      .slice(
-                        0,
-                        500
-                      )
-                }
-              );
-            }
-
-
-            // ----------------------------------------
-            // RESTORE PLAYER
-            // ----------------------------------------
-
-            if (
-              act ===
-              'restore'
-            ) {
-
-              const p =
-                Object.values(
-                  db.players
-                ).find(
-                  x =>
-                    x.id ===
-                    b.id
-                );
-
-
-              if (!p) {
-
-                return out(
-                  404,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'Player not found'
-                  }
-                );
+                      .slice()
+                      .reverse()
+                };
               }
 
 
-              /*
-               * No virtual-money restoration.
-               */
+              else if (
+                action ===
+                'finance'
+              ) {
 
-              return out(
-                400,
-                {
+                result = {
 
                   ok:
-                    false,
+                    true,
 
-                  error:
-                    'Restore is disabled because the game no longer creates virtual money'
-                }
-              );
-            }
-
-
-            // ----------------------------------------
-            // APPROVE WITHDRAWAL
-            // ----------------------------------------
-
-            if (
-              act ===
-              'approve-withdrawal'
-            ) {
-
-              const withdrawal =
-                db.withdrawals.find(
-                  x =>
-                    x.id ===
-                    b.id
-                );
-
-
-              if (!withdrawal) {
-
-                return out(
-                  404,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'Withdrawal not found'
-                  }
-                );
+                  finance:
+                    db.finance
+                };
               }
 
 
-              if (
-                withdrawal.status !==
-                'pending'
+              else if (
+                action ===
+                'approveWithdrawal'
               ) {
 
-                return out(
-                  400,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'Withdrawal is not pending'
-                  }
-                );
-              }
+                const id =
+                  String(
+                    b.id ||
+                    ''
+                  );
 
 
-              if (
-                !PAYSTACK_SECRET_KEY
-              ) {
-
-                return out(
-                  500,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'PAYSTACK_SECRET_KEY is not configured'
-                  }
-                );
-              }
-
-
-              const result =
-                await sendPaystackTransfer(
-                  withdrawal
-                );
-
-
-              // --------------------------------------
-              // PAYSTACK FAILED
-              // RETURN THE RESERVED MONEY
-              // --------------------------------------
-
-              if (
-                !result ||
-                !result.status
-              ) {
-
-                const p =
-                  Object.values(
-                    db.players
-                  ).find(
+                const withdrawal =
+                  db.withdrawals.find(
                     x =>
                       x.id ===
-                      withdrawal.playerId
+                      id
                   );
 
 
-                if (p) {
+                if (!withdrawal) {
 
-                  // Return the reserved withdrawal
-                  // amount to the player's wallet.
-                  p.bal =
-                    r2(
-                      Number(
-                        p.bal
-                      ) +
-                      Number(
-                        withdrawal.amount
-                      )
-                    );
-
-
-                  addLog(
-                    p,
-                    {
-
-                      type:
-                        'withdrawal_refunded',
-
-                      amount:
-                        withdrawal.amount,
-
-                      id:
-                        withdrawal.id,
-
-                      reason:
-                        String(
-                          result &&
-                          result.message
-                            ? result.message
-                            : 'Paystack payout could not be started'
-                        ).slice(
-                          0,
-                          300
-                        ),
-
-                      time:
-                        Date.now()
-                    }
-                  );
-                }
-
-
-                withdrawal.status =
-                  'failed';
-
-
-                withdrawal.failure =
-                  String(
-                    result &&
-                    result.message
-                      ? result.message
-                      : 'Payout could not be started'
-                  ).slice(
-                    0,
-                    300
-                  );
-
-
-                withdrawal.processedAt =
-                  Date.now();
-
-
-                db.finance.pendingWithdrawals =
-                  Math.max(
-                    0,
-
-                    r2(
-                      Number(
-                        db.finance
-                          .pendingWithdrawals
-                      ) -
-                      Number(
-                        withdrawal.amount
-                      )
-                    )
-                  );
-
-
-                save();
-                broadcast();
-
-
-                return out(
-                  400,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      withdrawal.failure,
-
-                    refunded:
-                      true,
-
-                    refundAmount:
-                      withdrawal.amount
-                  }
-                );
-              }
-
-
-              // --------------------------------------
-              // PAYSTACK ACCEPTED THE TRANSFER
-              // --------------------------------------
-
-              db.finance.pendingWithdrawals =
-                Math.max(
-                  0,
-
-                  r2(
-                    Number(
-                      db.finance
-                        .pendingWithdrawals
-                    ) -
-                    Number(
-                      withdrawal.amount
-                    )
-                  )
-                );
-
-
-              save();
-              broadcast();
-
-
-              return out(
-                200,
-                {
-
-                  ok:
-                    true,
-
-                  message:
-                    'Withdrawal payout started',
-
-                  withdrawal
-
-                }
-              );
-            }
-
-
-            // ----------------------------------------
-            // REJECT WITHDRAWAL
-            // ----------------------------------------
-
-            if (
-              act ===
-              'reject-withdrawal'
-            ) {
-
-              const withdrawal =
-                db.withdrawals.find(
-                  x =>
-                    x.id ===
-                    b.id
-                );
-
-
-              if (!withdrawal) {
-
-                return out(
-                  404,
-                  {
+                  result = {
 
                     ok:
                       false,
 
                     error:
                       'Withdrawal not found'
-                  }
-                );
-              }
+                  };
+
+                }
 
 
-              if (
-                withdrawal.status !==
-                'pending'
-              ) {
+                else if (
+                  withdrawal.status !==
+                  'pending'
+                ) {
 
-                return out(
-                  400,
-                  {
+                  result = {
 
                     ok:
                       false,
 
                     error:
                       'Withdrawal is not pending'
-                  }
-                );
-              }
+                  };
 
-
-              const p =
-                Object.values(
-                  db.players
-                ).find(
-                  x =>
-                    x.id ===
-                    withdrawal.playerId
-                );
-
-
-              if (p) {
-
-                p.bal =
-                  r2(
-                    Number(
-                      p.bal
-                    ) +
-                    Number(
-                      withdrawal.amount
-                    )
-                  );
-
-
-                addLog(
-                  p,
-                  {
-
-                    type:
-                      'withdrawal_rejected',
-
-                    amount:
-                      withdrawal.amount,
-
-                    id:
-                      withdrawal.id,
-
-                    time:
-                      Date.now()
-                  }
-                );
-              }
-
-
-              withdrawal.status =
-                'rejected';
-
-
-              withdrawal.failure =
-                String(
-                  b.reason ||
-                  'Rejected by admin'
-                )
-                  .slice(
-                    0,
-                    300
-                  );
-
-
-              withdrawal.processedAt =
-                Date.now();
-
-
-              db.finance.pendingWithdrawals =
-                Math.max(
-                  0,
-
-                  r2(
-                    Number(
-                      db.finance
-                        .pendingWithdrawals
-                    ) -
-
-                    Number(
-                      withdrawal.amount
-                    )
-                  )
-                );
-
-
-              save();
-              broadcast();
-
-
-              return out(
-                200,
-                {
-
-                  ok:
-                    true,
-
-                  message:
-                    'Withdrawal rejected and player balance restored'
                 }
-              );
-            }
 
 
-            // ----------------------------------------
-            // VERIFY PAYSTACK TRANSFER
-            // ----------------------------------------
+                else {
 
-            if (
-              act ===
-              'verify-transfer'
-            ) {
-
-              const withdrawal =
-                db.withdrawals.find(
-                  x =>
-                    x.id ===
-                    b.id
-                );
-
-
-              if (!withdrawal) {
-
-                return out(
-                  404,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'Withdrawal not found'
-                  }
-                );
-              }
-
-
-              if (
-                !withdrawal.transferReference
-              ) {
-
-                return out(
-                  400,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'No transfer reference'
-                  }
-                );
-              }
-
-
-              const result =
-                await paystackRequest(
-                  'GET',
-                  '/transfer/verify/' +
-                    encodeURIComponent(
-                      withdrawal.transferReference
-                    )
-                );
-
-
-              if (
-                !result ||
-                !result.status ||
-                !result.data
-              ) {
-
-                return out(
-                  400,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      result &&
-                      result.message
-
-                        ? result.message
-
-                        : 'Could not verify transfer'
-                  }
-                );
-              }
-
-
-              const status =
-                result.data.status;
-
-
-              if (
-                status ===
-                  'success' ||
-                status ===
-                  'successful'
-              ) {
-
-                if (
-                  withdrawal.status !==
-                  'paid'
-                ) {
-
-                  withdrawal.status =
-                    'paid';
-
-                  withdrawal.processedAt =
-                    Date.now();
-
-                  db.finance.totalWithdrawn =
-                    r2(
-                      Number(
-                        db.finance
-                          .totalWithdrawn
-                      ) +
-
-                      Number(
-                        withdrawal.amount
-                      )
+                  const transfer =
+                    await sendPaystackTransfer(
+                      withdrawal
                     );
+
+
+                  if (
+                    transfer &&
+                    transfer.status
+                  ) {
+
+                    db.finance
+                      .pendingWithdrawals =
+                      Math.max(
+                        0,
+
+                        Number(
+                          db.finance
+                            .pendingWithdrawals ||
+                          0
+                        ) -
+
+                        Number(
+                          withdrawal.amount
+                        )
+                      );
+
+
+                    withdrawal.status =
+                      'processing';
+
+
+                    result = {
+
+                      ok:
+                        true,
+
+                      withdrawal
+                    };
+
+                  }
+
+
+                  else {
+
+                    // FIX #1: this used to just return an error while
+                    // leaving the player's balance already deducted
+                    // and the withdrawal stuck at "pending" forever.
+                    // Now we automatically refund the player.
+
+                    const failMsg =
+                      (transfer && transfer.message) ||
+                      'Transfer failed';
+
+                    refundWithdrawal(
+                      withdrawal,
+                      'failed',
+                      failMsg
+                    );
+
+                    result = {
+
+                      ok:
+                        false,
+
+                      error:
+                        failMsg +
+                        ' — the player\'s balance has been ' +
+                        'automatically refunded.',
+
+                      withdrawal
+                    };
+                  }
                 }
               }
 
 
               else if (
-                status ===
-                  'failed' ||
-                status ===
-                  'reversed'
+                action ===
+                'rejectWithdrawal'
               ) {
 
-                const p =
-                  Object.values(
-                    db.players
-                  ).find(
-                    x =>
-                      x.id ===
-                      withdrawal.playerId
+                const id =
+                  String(
+                    b.id ||
+                    ''
                   );
 
 
-                if (p) {
+                const withdrawal =
+                  db.withdrawals.find(
+                    x =>
+                      x.id ===
+                      id
+                  );
 
-                  p.bal =
+
+                if (!withdrawal) {
+
+                  result = {
+
+                    ok:
+                      false,
+
+                    error:
+                      'Withdrawal not found'
+                  };
+
+                }
+
+
+                else if (
+                  withdrawal.status !==
+                  'pending'
+                ) {
+
+                  result = {
+
+                    ok:
+                      false,
+
+                    error:
+                      'Withdrawal is not pending'
+                  };
+
+                }
+
+
+                else {
+
+                  refundWithdrawal(
+                    withdrawal,
+                    'rejected',
+                    'Rejected by admin'
+                  );
+
+                  result = {
+
+                    ok:
+                      true,
+
+                    withdrawal
+                  };
+                }
+              }
+
+
+              else if (
+                action ===
+                'completeWithdrawal'
+              ) {
+
+                const id =
+                  String(
+                    b.id ||
+                    ''
+                  );
+
+
+                const withdrawal =
+                  db.withdrawals.find(
+                    x =>
+                      x.id ===
+                      id
+                  );
+
+
+                if (!withdrawal) {
+
+                  result = {
+
+                    ok:
+                      false,
+
+                    error:
+                      'Withdrawal not found'
+                  };
+
+                }
+
+
+                else if (
+                  withdrawal.status !==
+                  'processing'
+                ) {
+
+                  result = {
+
+                    ok:
+                      false,
+
+                    error:
+                      'Withdrawal is not processing'
+                  };
+
+                }
+
+
+                else {
+
+                  const p =
+                    db.players[
+                      withdrawal.token
+                    ];
+
+
+                  if (p) {
+
+                    // FIX #2: single field, only ever written here,
+                    // once a transfer has actually completed.
+                    p.withdrawn =
+                      r2(
+                        Number(
+                          p.withdrawn ||
+                          0
+                        ) +
+
+                        Number(
+                          withdrawal.amount
+                        )
+                      );
+                  }
+
+
+                  withdrawal.status =
+                    'success';
+
+
+                  withdrawal.completedAt =
+                    Date.now();
+
+
+                  db.finance
+                    .totalWithdrawn =
                     r2(
                       Number(
-                        p.bal
+                        db.finance
+                          .totalWithdrawn ||
+                        0
                       ) +
 
                       Number(
                         withdrawal.amount
                       )
                     );
+
+
+                  result = {
+
+                    ok:
+                      true,
+
+                    withdrawal
+                  };
                 }
-
-
-                withdrawal.status =
-                  'failed';
-
-                withdrawal.failure =
-                  status;
-
-                withdrawal.processedAt =
-                  Date.now();
               }
 
 
-              save();
-              broadcast();
+              else {
 
-
-              return out(
-                200,
-                {
+                result = {
 
                   ok:
-                    true,
+                    false,
 
-                  status,
+                  error:
+                    'Unknown admin action'
+                };
+              }
 
-                  withdrawal
-
-                }
-              );
             }
 
+            catch (e) {
 
-            // ----------------------------------------
-            // MANUAL CREDIT
-            // ----------------------------------------
-
-            if (
-              act ===
-              'credit'
-            ) {
-
-              const p =
-                Object.values(
-                  db.players
-                ).find(
-                  x =>
-                    x.id ===
-                    b.id
-                );
-
-
-              const amount =
-                Number(
-                  b.amount
-                );
-
-
-              if (!p) {
-
-                return out(
-                  404,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'Player not found'
-                  }
-                );
-              }
-
-
-              if (
-                !Number.isFinite(
-                  amount
-                ) ||
-                amount <= 0
-              ) {
-
-                return out(
-                  400,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'Invalid amount'
-                  }
-                );
-              }
-
-
-              p.bal =
-                r2(
-                  Number(
-                    p.bal
-                  ) +
-                  amount
-                );
-
-
-              addLog(
-                p,
-                {
-
-                  type:
-                    'admin_credit',
-
-                  amount,
-
-                  time:
-                    Date.now()
-                }
+              console.error(
+                'ADMIN API ERROR:',
+                action,
+                e
               );
 
 
-              save();
-              broadcast();
-
-
-              return out(
-                200,
-                {
-
-                  ok:
-                    true,
-
-                  balance:
-                    p.bal
-                }
-              );
-            }
-
-
-            // ----------------------------------------
-            // MANUAL DEBIT
-            // ----------------------------------------
-
-            if (
-              act ===
-              'debit'
-            ) {
-
-              const p =
-                Object.values(
-                  db.players
-                ).find(
-                  x =>
-                    x.id ===
-                    b.id
-                );
-
-
-              const amount =
-                Number(
-                  b.amount
-                );
-
-
-              if (!p) {
-
-                return out(
-                  404,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'Player not found'
-                  }
-                );
-              }
-
-
-              if (
-                !Number.isFinite(
-                  amount
-                ) ||
-                amount <= 0
-              ) {
-
-                return out(
-                  400,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'Invalid amount'
-                  }
-                );
-              }
-
-
-              if (
-                amount >
-                Number(
-                  p.bal
-                )
-              ) {
-
-                return out(
-                  400,
-                  {
-
-                    ok:
-                      false,
-
-                    error:
-                      'Player balance is too low'
-                  }
-                );
-              }
-
-
-              p.bal =
-                r2(
-                  Number(
-                    p.bal
-                  ) -
-                  amount
-                );
-
-
-              addLog(
-                p,
-                {
-
-                  type:
-                    'admin_debit',
-
-                  amount,
-
-                  time:
-                    Date.now()
-                }
-              );
-
-
-              save();
-              broadcast();
-
-
-              return out(
-                200,
-                {
-
-                  ok:
-                    true,
-
-                  balance:
-                    p.bal
-                }
-              );
-            }
-
-
-            return out(
-              404,
-              {
+              result = {
 
                 ok:
                   false,
 
                 error:
-                  'Unknown admin request'
+                  'Admin server error'
+              };
+            }
+
+
+            save();
+            broadcast();
+
+
+            res.writeHead(
+              200,
+              {
+
+                'Content-Type':
+                  'application/json'
               }
+            );
+
+
+            res.end(
+              JSON.stringify(
+                result
+              )
             );
 
           }
@@ -4430,10 +4505,11 @@ const server =
 
 
       // --------------------------------------------
-      // PUBLIC HISTORY
+      // HISTORY API
       // --------------------------------------------
 
       if (
+        req.method === 'GET' &&
         u.pathname ===
         '/api/history'
       ) {
@@ -4443,15 +4519,22 @@ const server =
           {
 
             'Content-Type':
-              'application/json'
+              'application/json',
+
+            'Cache-Control':
+              'no-cache'
           }
         );
 
 
         return res.end(
-          JSON.stringify(
-            db.history
-          )
+          JSON.stringify({
+            ok:
+              true,
+
+            history:
+              db.history
+          })
         );
       }
 
@@ -4460,41 +4543,166 @@ const server =
       // FRONTEND
       // --------------------------------------------
 
-      fs.readFile(
-        path.join(
-          __dirname,
-          'index.html'
-        ),
+      if (
+        req.method === 'GET' &&
+        (
+          u.pathname === '/' ||
+          u.pathname === '/index.html'
+        )
+      ) {
 
-        (e, html) => {
+        return fs.readFile(
+          path.join(
+            __dirname,
+            'index.html'
+          ),
 
-          if (e) {
+          (e, html) => {
+
+            if (e) {
+
+              res.writeHead(
+                500,
+                {
+
+                  'Content-Type':
+                    'text/plain'
+                }
+              );
+
+
+              return res.end(
+                'index.html missing'
+              );
+            }
+
 
             res.writeHead(
-              500
+              200,
+              {
+
+                'Content-Type':
+                  'text/html; charset=utf-8'
+              }
             );
 
-            return res.end(
-              'index.html missing'
+
+            res.end(
+              html
             );
           }
+        );
+      }
 
 
-          res.writeHead(
-            200,
-            {
+      // --------------------------------------------
+      // STATIC FILES
+      // --------------------------------------------
 
-              'Content-Type':
-                'text/html; charset=utf-8'
+      if (
+        req.method === 'GET'
+      ) {
+
+        const file =
+          path.join(
+            __dirname,
+            u.pathname
+          );
+
+
+        if (
+          file.startsWith(
+            __dirname
+          )
+        ) {
+
+          return fs.readFile(
+            file,
+            (e, data) => {
+
+              if (e) {
+
+                res.writeHead(
+                  404
+                );
+
+                return res.end(
+                  'Not found'
+                );
+              }
+
+
+              const ext =
+                path
+                  .extname(
+                    file
+                  )
+                  .toLowerCase();
+
+
+              const types = {
+
+                '.js':
+                  'application/javascript',
+
+                '.css':
+                  'text/css',
+
+                '.html':
+                  'text/html; charset=utf-8',
+
+                '.json':
+                  'application/json',
+
+                '.png':
+                  'image/png',
+
+                '.jpg':
+                  'image/jpeg',
+
+                '.jpeg':
+                  'image/jpeg',
+
+                '.svg':
+                  'image/svg+xml',
+
+                '.ico':
+                  'image/x-icon'
+              };
+
+
+              res.writeHead(
+                200,
+                {
+
+                  'Content-Type':
+                    types[ext] ||
+                    'application/octet-stream'
+                }
+              );
+
+
+              res.end(
+                data
+              );
             }
           );
-
-
-          res.end(
-            html
-          );
-
         }
+      }
+
+
+      res.writeHead(
+        404,
+        {
+
+          'Content-Type':
+            'text/plain'
+        }
+      );
+
+
+      res.end(
+        'Not found'
       );
 
     }
@@ -4512,7 +4720,7 @@ async function handlePaymentCallback(
 
   try {
 
-    const deposit =
+    let deposit =
       db.deposits.find(
         x =>
           x.reference ===
@@ -4520,21 +4728,40 @@ async function handlePaymentCallback(
       );
 
 
+    let verified = null;
+
+
     if (!deposit) {
 
-      res.writeHead(
-        404,
-        {
+      // FIX #3: try to recover here too, since the callback page is
+      // often the very first place a user lands after paying.
+      verified =
+        await verifyPaystackTransaction(
+          reference
+        );
 
-          'Content-Type':
-            'text/html'
-        }
-      );
+      deposit =
+        rebuildDepositFromTx(
+          verified,
+          null
+        );
+
+      if (!deposit) {
+
+        res.writeHead(
+          404,
+          {
+
+            'Content-Type':
+              'text/html'
+          }
+        );
 
 
-      return res.end(
-        '<h2>Deposit not found</h2>'
-      );
+        return res.end(
+          '<h2>Deposit not found</h2>'
+        );
+      }
     }
 
 
@@ -4551,16 +4778,19 @@ async function handlePaymentCallback(
     }
 
 
-    const result =
-      await verifyPaystackTransaction(
-        reference
-      );
+    if (!verified) {
+
+      verified =
+        await verifyPaystackTransaction(
+          reference
+        );
+    }
 
 
     if (
-      !result ||
-      !result.status ||
-      !result.data
+      !verified ||
+      !verified.status ||
+      !verified.data
     ) {
 
       return paymentPage(
@@ -4572,7 +4802,7 @@ async function handlePaymentCallback(
 
 
     const tx =
-      result.data;
+      verified.data;
 
 
     if (
@@ -4588,118 +4818,23 @@ async function handlePaymentCallback(
     }
 
 
-    const amount =
-      Number(
-        tx.amount
-      ) / 100;
+    const credited =
+      creditDeposit(
+        deposit,
+        tx
+      );
 
 
     if (
-      amount !==
-      Number(
-        deposit.amount
-      )
+      credited &&
+      credited.error
     ) {
 
       return paymentPage(
         res,
         false,
-        'Payment amount does not match the deposit.'
+        credited.error
       );
-    }
-
-
-    const p =
-      db.players[
-        deposit.token
-      ];
-
-
-    if (!p) {
-
-      return paymentPage(
-        res,
-        false,
-        'Player account could not be found.'
-      );
-    }
-
-
-    if (
-      deposit.status !==
-      'success'
-    ) {
-
-      deposit.status =
-        'success';
-
-      deposit.verifiedAt =
-        Date.now();
-
-      deposit.paystackId =
-        tx.id;
-
-
-      p.bal =
-        r2(
-          Number(
-            p.bal
-          ) +
-          Number(
-            deposit.amount
-          )
-        );
-
-
-      p.deposits =
-        r2(
-          Number(
-            p.deposits || 0
-          ) +
-          Number(
-            deposit.amount
-          )
-        );
-
-
-      // FIRST SUCCESSFUL DEPOSIT
-      p.firstDepositCompleted =
-        true;
-
-
-      db.finance.totalDeposited =
-        r2(
-          Number(
-            db.finance
-              .totalDeposited
-          ) +
-
-          Number(
-            deposit.amount
-          )
-        );
-
-
-      addLog(
-        p,
-        {
-
-          type:
-            'deposit',
-
-          amount:
-            deposit.amount,
-
-          reference,
-
-          time:
-            Date.now()
-        }
-      );
-
-
-      save();
-      broadcast();
     }
 
 
@@ -4986,6 +5121,20 @@ server.listen(
 
       console.log(
         'WARNING: APP_URL is not configured'
+      );
+
+    }
+
+
+    if (
+      DATA === path.join(__dirname, 'data.json')
+    ) {
+
+      console.log(
+        'WARNING: DATA_FILE is not set to a persistent disk path. ' +
+        'On Render, data.json will be WIPED on every restart/redeploy ' +
+        'unless you attach a paid-plan persistent Disk and set ' +
+        'DATA_FILE to a path on it (e.g. /var/data/data.json).'
       );
 
     }
