@@ -271,7 +271,7 @@ button{
 
 table{
   width:100%;
-  min-width:650px;
+  min-width:700px;
   border-collapse:collapse;
 }
 
@@ -360,9 +360,11 @@ td{
 .loading{
   color:#888899;
   font-size:13px;
+  margin-bottom:10px;
 }
 
 @media(max-width:800px){
+
   .grid{
     grid-template-columns:repeat(2,1fr);
   }
@@ -370,9 +372,11 @@ td{
   .financeGrid{
     grid-template-columns:repeat(2,1fr);
   }
+
 }
 
 @media(max-width:500px){
+
   .grid{
     grid-template-columns:1fr 1fr;
   }
@@ -400,13 +404,17 @@ td{
   .card .value{
     font-size:18px;
   }
+
 }
+
 </style>
 </head>
 
 <body>
 
+
 <!-- LOGIN -->
+
 <div id="loginPage">
 
   <div class="loginBox">
@@ -436,6 +444,7 @@ td{
 
 
 <!-- DASHBOARD -->
+
 <div id="dashboard" class="hidden">
 
   <div class="topbar">
@@ -447,11 +456,19 @@ td{
     <div style="display:flex;align-items:center">
 
       <div class="status">
+
         <span id="statusDot" class="dot"></span>
-        <span id="statusText">Disconnected</span>
+
+        <span id="statusText">
+          Disconnected
+        </span>
+
       </div>
 
-      <button class="logout" onclick="logout()">
+      <button
+        class="logout"
+        onclick="logout()"
+      >
         Logout
       </button>
 
@@ -462,28 +479,72 @@ td{
 
   <main class="container">
 
+
     <!-- MAIN STATS -->
 
     <div class="grid">
 
       <div class="card">
-        <div class="label">👥 PLAYERS</div>
-        <div id="playersCount" class="value">0</div>
+
+        <div class="label">
+          👥 PLAYERS
+        </div>
+
+        <div
+          id="playersCount"
+          class="value"
+        >
+          0
+        </div>
+
       </div>
 
-      <div class="card">
-        <div class="label">🟢 ONLINE</div>
-        <div id="onlineCount" class="value">0</div>
-      </div>
 
       <div class="card">
-        <div class="label">💰 TOTAL DEPOSITED</div>
-        <div id="depositedCount" class="value money">₦0</div>
+
+        <div class="label">
+          🟢 ONLINE
+        </div>
+
+        <div
+          id="onlineCount"
+          class="value"
+        >
+          0
+        </div>
+
       </div>
 
+
       <div class="card">
-        <div class="label">🏦 TOTAL WITHDRAWN</div>
-        <div id="withdrawnCount" class="value warning">₦0</div>
+
+        <div class="label">
+          💰 TOTAL DEPOSITED
+        </div>
+
+        <div
+          id="depositedCount"
+          class="value money"
+        >
+          ₦0
+        </div>
+
+      </div>
+
+
+      <div class="card">
+
+        <div class="label">
+          🏦 TOTAL WITHDRAWN
+        </div>
+
+        <div
+          id="withdrawnCount"
+          class="value warning"
+        >
+          ₦0
+        </div>
+
       </div>
 
     </div>
@@ -495,46 +556,111 @@ td{
 
       <div class="sectionHead">
 
-        <h2>💰 FINANCIAL OVERVIEW</h2>
+        <h2>
+          💰 FINANCIAL OVERVIEW
+        </h2>
 
-        <button class="refreshBtn" onclick="loadAll()">
+        <button
+          class="refreshBtn"
+          onclick="loadAll()"
+        >
           🔄 Refresh
         </button>
 
       </div>
+
 
       <div class="sectionBody">
 
         <div class="financeGrid">
 
           <div class="financeItem">
-            <small>Total Deposits</small>
-            <strong id="financeDeposits">₦0</strong>
+
+            <small>
+              Total Deposits
+            </small>
+
+            <strong
+              id="financeDeposits"
+            >
+              ₦0
+            </strong>
+
           </div>
 
-          <div class="financeItem">
-            <small>Total Withdrawals</small>
-            <strong id="financeWithdrawals">₦0</strong>
-          </div>
 
           <div class="financeItem">
-            <small>Pending Withdrawals</small>
-            <strong id="financePending">₦0</strong>
+
+            <small>
+              Total Withdrawals
+            </small>
+
+            <strong
+              id="financeWithdrawals"
+            >
+              ₦0
+            </strong>
+
           </div>
 
-          <div class="financeItem">
-            <small>Deposit Records</small>
-            <strong id="depositRecords">0</strong>
-          </div>
 
           <div class="financeItem">
-            <small>Withdrawal Records</small>
-            <strong id="withdrawalRecords">0</strong>
+
+            <small>
+              Pending Withdrawals
+            </small>
+
+            <strong
+              id="financePending"
+            >
+              ₦0
+            </strong>
+
           </div>
 
+
           <div class="financeItem">
-            <small>Player Liability</small>
-            <strong id="playerLiability">₦0</strong>
+
+            <small>
+              Deposit Records
+            </small>
+
+            <strong
+              id="depositRecords"
+            >
+              0
+            </strong>
+
+          </div>
+
+
+          <div class="financeItem">
+
+            <small>
+              Withdrawal Records
+            </small>
+
+            <strong
+              id="withdrawalRecords"
+            >
+              0
+            </strong>
+
+          </div>
+
+
+          <div class="financeItem">
+
+            <small>
+              Player Liability
+            </small>
+
+            <strong
+              id="playerLiability"
+            >
+              ₦0
+            </strong>
+
           </div>
 
         </div>
@@ -550,19 +676,29 @@ td{
 
       <div class="sectionHead">
 
-        <h2>🏦 WITHDRAWALS</h2>
+        <h2>
+          🏦 WITHDRAWALS
+        </h2>
 
-        <button class="refreshBtn" onclick="loadWithdrawals()">
+        <button
+          class="refreshBtn"
+          onclick="loadWithdrawals()"
+        >
           🔄 Refresh
         </button>
 
       </div>
 
+
       <div class="sectionBody">
 
-        <div id="withdrawalsLoading" class="loading">
+        <div
+          id="withdrawalsLoading"
+          class="loading"
+        >
           Loading withdrawals...
         </div>
+
 
         <div class="tableWrap">
 
@@ -571,18 +707,29 @@ td{
             <thead>
 
               <tr>
+
                 <th>ID</th>
+
                 <th>PLAYER</th>
+
                 <th>AMOUNT</th>
+
                 <th>BANK</th>
+
                 <th>ACCOUNT</th>
+
                 <th>STATUS</th>
+
                 <th>ACTION</th>
+
               </tr>
 
             </thead>
 
-            <tbody id="withdrawalsTable"></tbody>
+
+            <tbody
+              id="withdrawalsTable"
+            ></tbody>
 
           </table>
 
@@ -599,19 +746,29 @@ td{
 
       <div class="sectionHead">
 
-        <h2>💳 DEPOSITS</h2>
+        <h2>
+          💳 DEPOSITS
+        </h2>
 
-        <button class="refreshBtn" onclick="loadDeposits()">
+        <button
+          class="refreshBtn"
+          onclick="loadDeposits()"
+        >
           🔄 Refresh
         </button>
 
       </div>
 
+
       <div class="sectionBody">
 
-        <div id="depositsLoading" class="loading">
+        <div
+          id="depositsLoading"
+          class="loading"
+        >
           Loading deposits...
         </div>
+
 
         <div class="tableWrap">
 
@@ -620,17 +777,27 @@ td{
             <thead>
 
               <tr>
+
                 <th>ID</th>
+
                 <th>PLAYER</th>
+
                 <th>AMOUNT</th>
+
                 <th>REFERENCE</th>
+
                 <th>STATUS</th>
+
                 <th>DATE</th>
+
               </tr>
 
             </thead>
 
-            <tbody id="depositsTable"></tbody>
+
+            <tbody
+              id="depositsTable"
+            ></tbody>
 
           </table>
 
@@ -647,7 +814,9 @@ td{
 
       <div class="sectionHead">
 
-        <h2>👥 PLAYERS</h2>
+        <h2>
+          👥 PLAYERS
+        </h2>
 
         <input
           id="playerSearch"
@@ -658,6 +827,7 @@ td{
 
       </div>
 
+
       <div class="sectionBody">
 
         <div class="tableWrap">
@@ -667,16 +837,25 @@ td{
             <thead>
 
               <tr>
+
                 <th>ID</th>
+
                 <th>NAME</th>
+
                 <th>BALANCE</th>
+
                 <th>BET</th>
+
                 <th>CREATED</th>
+
               </tr>
 
             </thead>
 
-            <tbody id="playersTable"></tbody>
+
+            <tbody
+              id="playersTable"
+            ></tbody>
 
           </table>
 
@@ -686,43 +865,50 @@ td{
 
     </section>
 
+
   </main>
 
 </div>
 
 
-<div id="message" class="message hidden"></div>
+<div
+  id="message"
+  class="message hidden"
+></div>
 
 
 <script>
 
-/*
-========================================================
-CRAZY CRASH ROCKETS ADMIN CONNECTION
-========================================================
-*/
+/* =====================================================
+   SERVER
+===================================================== */
 
 const GAME_SERVER =
   "https://rocket-crash-ppok.onrender.com";
 
+
 let KEY = "";
+
 let playersData = [];
 
 
-/*
-========================================================
-FORMAT
-========================================================
-*/
+/* =====================================================
+   FORMAT
+===================================================== */
 
 function money(value){
 
-  const n = Number(value || 0);
+  const n =
+    Number(value || 0);
 
-  return "₦" + n.toLocaleString("en-NG",{
-    minimumFractionDigits:2,
-    maximumFractionDigits:2
-  });
+  return "₦" +
+    n.toLocaleString(
+      "en-NG",
+      {
+        minimumFractionDigits:2,
+        maximumFractionDigits:2
+      }
+    );
 
 }
 
@@ -739,19 +925,24 @@ function escapeHtml(value){
 }
 
 
-/*
-========================================================
-MESSAGE
-========================================================
-*/
+/* =====================================================
+   MESSAGE
+===================================================== */
 
-function showMessage(text,type="ok"){
+function showMessage(
+  text,
+  type="ok"
+){
 
-  const box = document.getElementById("message");
+  const box =
+    document.getElementById(
+      "message"
+    );
 
   box.textContent = text;
 
-  box.className = "message " + type;
+  box.className =
+    "message " + type;
 
   setTimeout(()=>{
     box.classList.add("hidden");
@@ -760,42 +951,54 @@ function showMessage(text,type="ok"){
 }
 
 
-/*
-========================================================
-API CONNECTION
-========================================================
-*/
+/* =====================================================
+   API
+===================================================== */
 
-async function api(endpoint,options={}){
+async function api(
+  endpoint,
+  options={}
+){
 
   const opts = {
     ...options,
+
     headers:{
-      "Content-Type":"application/json",
+      "Content-Type":
+        "application/json",
+
       ...(options.headers || {})
     }
+
   };
 
 
   /*
-   IMPORTANT:
-   Crazy Crash server expects:
-   {
-      key: ADMIN_KEY
-   }
+    IMPORTANT:
 
-   It does NOT authenticate using only
-   X-Admin-Key.
+    Crazy Crash server expects:
+
+    {
+      key: ADMIN_KEY
+    }
+
+    inside the JSON body.
   */
 
-  if((opts.method || "GET").toUpperCase() === "POST"){
+  if(
+    (opts.method || "GET")
+      .toUpperCase() === "POST"
+  ){
 
     let body = {};
 
     try{
 
       if(opts.body){
-        body = JSON.parse(opts.body);
+
+        body =
+          JSON.parse(opts.body);
+
       }
 
     }catch(e){
@@ -804,23 +1007,33 @@ async function api(endpoint,options={}){
 
     }
 
+
     body.key = KEY;
 
-    opts.body = JSON.stringify(body);
+    opts.body =
+      JSON.stringify(body);
 
   }
 
 
   const response =
-    await fetch(GAME_SERVER + endpoint,opts);
+    await fetch(
+      GAME_SERVER + endpoint,
+      opts
+    );
 
 
   let data = {};
 
   try{
-    data = await response.json();
+
+    data =
+      await response.json();
+
   }catch(e){
+
     data = {};
+
   }
 
 
@@ -828,7 +1041,8 @@ async function api(endpoint,options={}){
 
     throw new Error(
       data.error ||
-      "Server returned HTTP " + response.status
+      "Server returned HTTP " +
+      response.status
     );
 
   }
@@ -839,19 +1053,22 @@ async function api(endpoint,options={}){
 }
 
 
-/*
-========================================================
-LOGIN
-========================================================
-*/
+/* =====================================================
+   LOGIN
+===================================================== */
 
 async function login(){
 
   const input =
-    document.getElementById("adminKey");
+    document.getElementById(
+      "adminKey"
+    );
 
   const error =
-    document.getElementById("loginError");
+    document.getElementById(
+      "loginError"
+    );
+
 
   const key =
     input.value.trim();
@@ -876,14 +1093,13 @@ async function login(){
 
   try{
 
-    /*
-    This is the real Crazy Crash admin endpoint.
-    */
-
-    await api("/admin/api/finance",{
-      method:"POST",
-      body:JSON.stringify({})
-    });
+    await api(
+      "/admin/api/finance",
+      {
+        method:"POST",
+        body:JSON.stringify({})
+      }
+    );
 
 
     localStorage.setItem(
@@ -895,6 +1111,7 @@ async function login(){
     document
       .getElementById("loginPage")
       .classList.add("hidden");
+
 
     document
       .getElementById("dashboard")
@@ -928,11 +1145,9 @@ async function login(){
 }
 
 
-/*
-========================================================
-LOGOUT
-========================================================
-*/
+/* =====================================================
+   LOGOUT
+===================================================== */
 
 function logout(){
 
@@ -963,92 +1178,107 @@ function logout(){
 }
 
 
-/*
-========================================================
-SERVER STATUS
-========================================================
-*/
+/* =====================================================
+   STATUS
+===================================================== */
 
-function setOnline(online){
+function setOnline(
+  online
+){
 
   const dot =
-    document.getElementById("statusDot");
+    document.getElementById(
+      "statusDot"
+    );
 
   const text =
-    document.getElementById("statusText");
+    document.getElementById(
+      "statusText"
+    );
 
 
   if(online){
 
-    dot.className = "dot online";
+    dot.className =
+      "dot online";
 
-    text.textContent = "Connected";
+    text.textContent =
+      "Connected";
 
   }else{
 
-    dot.className = "dot offline";
+    dot.className =
+      "dot offline";
 
-    text.textContent = "Disconnected";
+    text.textContent =
+      "Disconnected";
 
   }
 
 }
 
 
-/*
-========================================================
-FINANCE
-========================================================
-*/
+/* =====================================================
+   FINANCE
+===================================================== */
 
 async function loadFinance(){
 
   const data =
-    await api("/admin/api/finance",{
-      method:"POST",
-      body:JSON.stringify({})
-    });
+    await api(
+      "/admin/api/finance",
+      {
+        method:"POST",
+        body:JSON.stringify({})
+      }
+    );
 
 
   const f =
-    data.finance || data;
+    data.finance ||
+    data;
+
+
+  const deposited =
+    f.totalDeposited ??
+    f.deposited ??
+    0;
+
+
+  const withdrawn =
+    f.totalWithdrawn ??
+    f.withdrawn ??
+    0;
+
+
+  const pending =
+    f.pendingWithdrawals ??
+    0;
 
 
   document.getElementById(
     "financeDeposits"
   ).textContent =
-    money(
-      f.totalDeposited ??
-      f.deposited ??
-      0
-    );
+    money(deposited);
 
 
   document.getElementById(
     "financeWithdrawals"
   ).textContent =
-    money(
-      f.totalWithdrawn ??
-      f.withdrawn ??
-      0
-    );
+    money(withdrawn);
 
 
   document.getElementById(
     "financePending"
   ).textContent =
-    money(
-      f.pendingWithdrawals ??
-      0
-    );
+    money(pending);
 
 
   document.getElementById(
     "depositRecords"
   ).textContent =
     Number(
-      f.depositRecords ??
-      0
+      f.depositRecords ?? 0
     ).toLocaleString();
 
 
@@ -1056,8 +1286,7 @@ async function loadFinance(){
     "withdrawalRecords"
   ).textContent =
     Number(
-      f.withdrawalRecords ??
-      0
+      f.withdrawalRecords ?? 0
     ).toLocaleString();
 
 
@@ -1065,46 +1294,38 @@ async function loadFinance(){
     "playerLiability"
   ).textContent =
     money(
-      f.playerLiability ??
-      0
+      f.playerLiability ?? 0
     );
 
 
   document.getElementById(
     "depositedCount"
   ).textContent =
-    money(
-      f.totalDeposited ??
-      f.deposited ??
-      0
-    );
+    money(deposited);
 
 
   document.getElementById(
     "withdrawnCount"
   ).textContent =
-    money(
-      f.totalWithdrawn ??
-      f.withdrawn ??
-      0
-    );
+    money(withdrawn);
 
 }
 
 
-/*
-========================================================
-STATE / PLAYERS
-========================================================
-*/
+/* =====================================================
+   STATE / PLAYERS
+===================================================== */
 
 async function loadState(){
 
   const data =
-    await api("/admin/api/state",{
-      method:"POST",
-      body:JSON.stringify({})
-    });
+    await api(
+      "/admin/api/state",
+      {
+        method:"POST",
+        body:JSON.stringify({})
+      }
+    );
 
 
   const players =
@@ -1122,7 +1343,8 @@ async function loadState(){
   document.getElementById(
     "playersCount"
   ).textContent =
-    playersData.length.toLocaleString();
+    playersData.length
+      .toLocaleString();
 
 
   const online =
@@ -1134,21 +1356,24 @@ async function loadState(){
   document.getElementById(
     "onlineCount"
   ).textContent =
-    Number(online).toLocaleString();
+    Number(online)
+      .toLocaleString();
 
 
-  renderPlayers(playersData);
+  renderPlayers(
+    playersData
+  );
 
 }
 
 
-/*
-========================================================
-PLAYERS TABLE
-========================================================
-*/
+/* =====================================================
+   PLAYERS
+===================================================== */
 
-function renderPlayers(players){
+function renderPlayers(
+  players
+){
 
   const table =
     document.getElementById(
@@ -1158,8 +1383,16 @@ function renderPlayers(players){
 
   if(!players.length){
 
-    table.innerHTML =
-      '<tr><td colspan="5" class="empty">No players found.</td></tr>';
+    table.innerHTML = `
+      <tr>
+        <td
+          colspan="5"
+          class="empty"
+        >
+          No players found.
+        </td>
+      </tr>
+    `;
 
     return;
 
@@ -1167,56 +1400,68 @@ function renderPlayers(players){
 
 
   table.innerHTML =
-    players.map((p,index)=>{
+    players.map(
+      (p,index)=>{
 
-      const id =
-        p.id ??
-        p.userId ??
-        p.telegramId ??
-        index + 1;
-
-
-      const name =
-        p.name ??
-        p.username ??
-        "Player";
+        const id =
+          p.id ??
+          p.userId ??
+          p.telegramId ??
+          index + 1;
 
 
-      const balance =
-        p.bal ??
-        p.balance ??
-        0;
+        const name =
+          p.name ??
+          p.username ??
+          "Player";
 
 
-      const bet =
-        p.bet ??
-        p.currentBet ??
-        0;
+        const balance =
+          p.bal ??
+          p.balance ??
+          0;
 
 
-      const created =
-        p.createdAt ??
-        p.created ??
-        "";
+        const bet =
+          p.bet ??
+          p.currentBet ??
+          0;
 
 
-      return `
-        <tr>
+        const created =
+          p.createdAt ??
+          p.created ??
+          "";
 
-          <td>${escapeHtml(id)}</td>
 
-          <td>${escapeHtml(name)}</td>
+        return `
+          <tr>
 
-          <td>${money(balance)}</td>
+            <td>
+              ${escapeHtml(id)}
+            </td>
 
-          <td>${money(bet)}</td>
+            <td>
+              ${escapeHtml(name)}
+            </td>
 
-          <td>${escapeHtml(created)}</td>
+            <td>
+              ${money(balance)}
+            </td>
 
-        </tr>
-      `;
+            <td>
+              ${money(bet)}
+            </td>
 
-    }).join("");
+            <td>
+              ${escapeHtml(created)}
+            </td>
+
+          </tr>
+        `;
+
+      }
+    ).join("");
 
 }
 
@@ -1225,7 +1470,9 @@ function filterPlayers(){
 
   const q =
     document
-      .getElementById("playerSearch")
+      .getElementById(
+        "playerSearch"
+      )
       .value
       .toLowerCase()
       .trim();
@@ -1233,7 +1480,9 @@ function filterPlayers(){
 
   if(!q){
 
-    renderPlayers(playersData);
+    renderPlayers(
+      playersData
+    );
 
     return;
 
@@ -1241,27 +1490,24 @@ function filterPlayers(){
 
 
   const filtered =
-    playersData.filter(p=>{
-
-      const text =
+    playersData.filter(
+      p =>
         JSON.stringify(p)
-          .toLowerCase();
-
-      return text.includes(q);
-
-    });
+          .toLowerCase()
+          .includes(q)
+    );
 
 
-  renderPlayers(filtered);
+  renderPlayers(
+    filtered
+  );
 
 }
 
 
-/*
-========================================================
-DEPOSITS
-========================================================
-*/
+/* =====================================================
+   DEPOSITS
+===================================================== */
 
 async function loadDeposits(){
 
@@ -1276,31 +1522,56 @@ async function loadDeposits(){
     );
 
 
-  loading.classList.remove("hidden");
+  loading.classList.remove(
+    "hidden"
+  );
 
 
   try{
 
     const data =
-      await api("/admin/api/deposits",{
-        method:"POST",
-        body:JSON.stringify({})
-      });
+      await api(
+        "/admin/api/deposits",
+        {
+          method:"POST",
+          body:JSON.stringify({})
+        }
+      );
 
 
     const deposits =
       data.deposits ||
       data.records ||
-      [];
+      (
+        data.data &&
+        Array.isArray(
+          data.data.deposits
+        )
+          ? data.data.deposits
+          : []
+      );
 
 
-    loading.classList.add("hidden");
+    loading.classList.add(
+      "hidden"
+    );
 
 
-    if(!Array.isArray(deposits) || !deposits.length){
+    if(
+      !Array.isArray(deposits) ||
+      !deposits.length
+    ){
 
-      table.innerHTML =
-        '<tr><td colspan="6" class="empty">No deposits found.</td></tr>';
+      table.innerHTML = `
+        <tr>
+          <td
+            colspan="6"
+            class="empty"
+          >
+            No deposits found.
+          </td>
+        </tr>
+      `;
 
       return;
 
@@ -1308,49 +1579,61 @@ async function loadDeposits(){
 
 
     table.innerHTML =
-      deposits.map((d,index)=>{
+      deposits.map(
+        (d,index)=>`
 
-        return `
           <tr>
 
-            <td>${escapeHtml(
-              d.id ??
-              d.reference ??
-              index+1
-            )}</td>
+            <td>
+              ${escapeHtml(
+                d.id ??
+                d.reference ??
+                index + 1
+              )}
+            </td>
 
-            <td>${escapeHtml(
-              d.playerId ??
-              d.userId ??
-              d.name ??
-              "-"
-            )}</td>
+            <td>
+              ${escapeHtml(
+                d.playerId ??
+                d.userId ??
+                d.telegramId ??
+                d.name ??
+                "-"
+              )}
+            </td>
 
-            <td>${money(
-              d.amount ??
-              0
-            )}</td>
+            <td>
+              ${money(
+                d.amount ?? 0
+              )}
+            </td>
 
-            <td>${escapeHtml(
-              d.reference ??
-              "-"
-            )}</td>
+            <td>
+              ${escapeHtml(
+                d.reference ??
+                "-"
+              )}
+            </td>
 
-            <td>${escapeHtml(
-              d.status ??
-              "-"
-            )}</td>
+            <td>
+              ${escapeHtml(
+                d.status ??
+                "-"
+              )}
+            </td>
 
-            <td>${escapeHtml(
-              d.createdAt ??
-              d.date ??
-              "-"
-            )}</td>
+            <td>
+              ${escapeHtml(
+                d.createdAt ??
+                d.date ??
+                "-"
+              )}
+            </td>
 
           </tr>
-        `;
 
-      }).join("");
+        `
+      ).join("");
 
 
   }catch(err){
@@ -1365,11 +1648,9 @@ async function loadDeposits(){
 }
 
 
-/*
-========================================================
-WITHDRAWALS
-========================================================
-*/
+/* =====================================================
+   WITHDRAWALS
+===================================================== */
 
 async function loadWithdrawals(){
 
@@ -1384,31 +1665,86 @@ async function loadWithdrawals(){
     );
 
 
-  loading.classList.remove("hidden");
+  loading.classList.remove(
+    "hidden"
+  );
 
 
   try{
 
     const data =
-      await api("/admin/api/withdrawals",{
-        method:"POST",
-        body:JSON.stringify({})
-      });
+      await api(
+        "/admin/api/withdrawals",
+        {
+          method:"POST",
+          body:JSON.stringify({})
+        }
+      );
 
 
-    const withdrawals =
-      data.withdrawals ||
-      data.records ||
-      [];
+    /*
+      Support all expected
+      server response shapes.
+    */
+
+    let withdrawals = [];
 
 
-    loading.classList.add("hidden");
+    if(
+      Array.isArray(data)
+    ){
+
+      withdrawals =
+        data;
+
+    }else if(
+      Array.isArray(
+        data.withdrawals
+      )
+    ){
+
+      withdrawals =
+        data.withdrawals;
+
+    }else if(
+      Array.isArray(
+        data.records
+      )
+    ){
+
+      withdrawals =
+        data.records;
+
+    }else if(
+      data.data &&
+      Array.isArray(
+        data.data.withdrawals
+      )
+    ){
+
+      withdrawals =
+        data.data.withdrawals;
+
+    }
 
 
-    if(!Array.isArray(withdrawals) || !withdrawals.length){
+    loading.classList.add(
+      "hidden"
+    );
 
-      table.innerHTML =
-        '<tr><td colspan="7" class="empty">No withdrawals found.</td></tr>';
+
+    if(!withdrawals.length){
+
+      table.innerHTML = `
+        <tr>
+          <td
+            colspan="7"
+            class="empty"
+          >
+            No withdrawal records found.
+          </td>
+        </tr>
+      `;
 
       return;
 
@@ -1416,97 +1752,143 @@ async function loadWithdrawals(){
 
 
     table.innerHTML =
-      withdrawals.map((w,index)=>{
+      withdrawals.map(
+        (w,index)=>{
 
-        const status =
-          String(
-            w.status || ""
-          ).toLowerCase();
-
-
-        let action = "";
+          const status =
+            String(
+              w.status || ""
+            ).toLowerCase();
 
 
-        if(status === "pending"){
+          const safeId =
+            String(
+              w.id ?? ""
+            ).replace(
+              /'/g,
+              "\\'"
+            );
 
-          action = `
-            <button
-              class="actionBtn approve"
-              onclick="approveWithdrawal('${escapeHtml(w.id)}')"
-            >
-              ✓ Approve
-            </button>
 
-            <button
-              class="actionBtn reject"
-              onclick="rejectWithdrawal('${escapeHtml(w.id)}')"
-            >
-              ✕ Reject
-            </button>
+          let action = "";
+
+
+          if(
+            status === "pending"
+          ){
+
+            action = `
+
+              <button
+                class="actionBtn approve"
+                onclick="approveWithdrawal('${safeId}')"
+              >
+                ✓ Approve
+              </button>
+
+              <button
+                class="actionBtn reject"
+                onclick="rejectWithdrawal('${safeId}')"
+              >
+                ✕ Reject
+              </button>
+
+            `;
+
+          }else if(
+            status === "processing"
+          ){
+
+            action = `
+
+              <button
+                class="actionBtn verify"
+                onclick="verifyTransfer('${safeId}')"
+              >
+                ✓ Verify
+              </button>
+
+            `;
+
+          }else{
+
+            action = `
+
+              <span
+                style="color:#777"
+              >
+                ${escapeHtml(
+                  w.status || "-"
+                )}
+              </span>
+
+            `;
+
+          }
+
+
+          return `
+
+            <tr>
+
+              <td>
+                ${escapeHtml(
+                  w.id ??
+                  index + 1
+                )}
+              </td>
+
+              <td>
+                ${escapeHtml(
+                  w.playerId ??
+                  w.userId ??
+                  w.telegramId ??
+                  w.name ??
+                  "-"
+                )}
+              </td>
+
+              <td>
+                ${money(
+                  w.amount ?? 0
+                )}
+              </td>
+
+              <td>
+                ${escapeHtml(
+                  w.bankName ??
+                  w.bank ??
+                  w.bank_name ??
+                  "-"
+                )}
+              </td>
+
+              <td>
+                ${escapeHtml(
+                  w.accountNumber ??
+                  w.account ??
+                  w.account_number ??
+                  "-"
+                )}
+              </td>
+
+              <td>
+                ${escapeHtml(
+                  w.status ??
+                  "-"
+                )}
+              </td>
+
+              <td>
+                ${action}
+              </td>
+
+            </tr>
+
           `;
-
-        }else if(status === "processing"){
-
-          action = `
-            <button
-              class="actionBtn verify"
-              onclick="verifyTransfer('${escapeHtml(w.id)}')"
-            >
-              ✓ Verify
-            </button>
-          `;
-
-        }else{
-
-          action =
-            `<span style="color:#777">${escapeHtml(status || "-")}</span>`;
 
         }
-
-
-        return `
-          <tr>
-
-            <td>${escapeHtml(
-              w.id ??
-              index+1
-            )}</td>
-
-            <td>${escapeHtml(
-              w.playerId ??
-              w.userId ??
-              w.name ??
-              "-"
-            )}</td>
-
-            <td>${money(
-              w.amount ??
-              0
-            )}</td>
-
-            <td>${escapeHtml(
-              w.bankName ??
-              w.bank ??
-              "-"
-            )}</td>
-
-            <td>${escapeHtml(
-              w.accountNumber ??
-              w.account ??
-              "-"
-            )}</td>
-
-            <td>${escapeHtml(
-              w.status ??
-              "-"
-            )}</td>
-
-            <td>${action}</td>
-
-          </tr>
-        `;
-
-      }).join("");
+      ).join("");
 
 
   }catch(err){
@@ -1514,25 +1896,45 @@ async function loadWithdrawals(){
     loading.textContent =
       "❌ " + err.message;
 
-    throw err;
+
+    table.innerHTML = `
+      <tr>
+        <td
+          colspan="7"
+          class="empty"
+        >
+          ❌ Could not load withdrawals.
+        </td>
+      </tr>
+    `;
+
+
+    console.error(
+      "Withdrawal loading error:",
+      err
+    );
 
   }
 
 }
 
 
-/*
-========================================================
-APPROVE WITHDRAWAL
-========================================================
-*/
+/* =====================================================
+   APPROVE WITHDRAWAL
+===================================================== */
 
-async function approveWithdrawal(id){
+async function approveWithdrawal(
+  id
+){
 
-  if(!confirm(
-    "Approve this withdrawal?"
-  )){
+  if(
+    !confirm(
+      "Approve this withdrawal?"
+    )
+  ){
+
     return;
+
   }
 
 
@@ -1543,6 +1945,7 @@ async function approveWithdrawal(id){
         "/admin/api/approve-withdrawal",
         {
           method:"POST",
+
           body:JSON.stringify({
             id:id
           })
@@ -1582,13 +1985,13 @@ async function approveWithdrawal(id){
 }
 
 
-/*
-========================================================
-REJECT WITHDRAWAL
-========================================================
-*/
+/* =====================================================
+   REJECT WITHDRAWAL
+===================================================== */
 
-async function rejectWithdrawal(id){
+async function rejectWithdrawal(
+  id
+){
 
   const reason =
     prompt(
@@ -1598,7 +2001,9 @@ async function rejectWithdrawal(id){
 
 
   if(reason === null){
+
     return;
+
   }
 
 
@@ -1609,6 +2014,7 @@ async function rejectWithdrawal(id){
         "/admin/api/reject-withdrawal",
         {
           method:"POST",
+
           body:JSON.stringify({
             id:id,
             reason:reason
@@ -1649,18 +2055,22 @@ async function rejectWithdrawal(id){
 }
 
 
-/*
-========================================================
-VERIFY TRANSFER
-========================================================
-*/
+/* =====================================================
+   VERIFY TRANSFER
+===================================================== */
 
-async function verifyTransfer(id){
+async function verifyTransfer(
+  id
+){
 
-  if(!confirm(
-    "Verify this Paystack transfer?"
-  )){
+  if(
+    !confirm(
+      "Verify this Paystack transfer?"
+    )
+  ){
+
     return;
+
   }
 
 
@@ -1671,6 +2081,7 @@ async function verifyTransfer(id){
         "/admin/api/verify-transfer",
         {
           method:"POST",
+
           body:JSON.stringify({
             id:id
           })
@@ -1710,17 +2121,16 @@ async function verifyTransfer(id){
 }
 
 
-/*
-========================================================
-LOAD EVERYTHING
-========================================================
-*/
+/* =====================================================
+   LOAD EVERYTHING
+===================================================== */
 
 async function loadAll(){
 
   try{
 
     setOnline(true);
+
 
     await loadFinance();
 
@@ -1735,7 +2145,9 @@ async function loadAll(){
 
     console.error(err);
 
+
     setOnline(false);
+
 
     showMessage(
       "❌ Admin server connection failed: " +
@@ -1748,11 +2160,9 @@ async function loadAll(){
 }
 
 
-/*
-========================================================
-AUTO LOGIN
-========================================================
-*/
+/* =====================================================
+   AUTO LOGIN
+===================================================== */
 
 window.addEventListener(
   "load",
@@ -1765,7 +2175,9 @@ window.addEventListener(
 
 
     if(!saved){
+
       return;
+
     }
 
 
@@ -1795,6 +2207,7 @@ window.addEventListener(
 
       setOnline(true);
 
+
       await loadAll();
 
 
@@ -1802,9 +2215,11 @@ window.addEventListener(
 
       KEY = "";
 
+
       localStorage.removeItem(
         "crazyCrashAdminKey"
       );
+
 
       setOnline(false);
 
@@ -1813,17 +2228,16 @@ window.addEventListener(
   });
 
 
-/*
-========================================================
-AUTO REFRESH
-========================================================
-*/
+/* =====================================================
+   AUTO REFRESH
+===================================================== */
 
 setInterval(()=>{
 
   if(KEY){
 
-    loadAll().catch(()=>{});
+    loadAll()
+      .catch(()=>{});
 
   }
 
@@ -1832,4 +2246,4 @@ setInterval(()=>{
 </script>
 
 </body>
-  </html>
+          </html>
