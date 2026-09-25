@@ -148,6 +148,7 @@ html,body{height:100%;margin:0;overflow:hidden}
     <div class="quick"><button data-v="10">10</button><button data-v="50">50</button><button data-v="100">100</button><button data-v="500">500</button><button data-v="max">MAX</button></div>
     <div class="ctl"><div class="slider" id="slider"><i id="sf"></i><u id="sk"></u></div><label for="auto">Auto</label><input id="auto" inputmode="decimal" placeholder="off"><span>x</span></div>
     <button class="go" id="go">PLACE BET</button>
+    <button class="plain" id="bonusBetBtn" style="text-align:center;margin-top:7px">🎁 USE ₦50 BONUS BET</button>
   </div>
   </div>
   <span id="rid" hidden></span><span id="timer" hidden></span>
@@ -157,7 +158,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 
 <div class="conn" id="conn" hidden>Connecting to the game server…</div>
 
-<div id="login"><div class="box"><div style="font-size:42px">🚀</div><h2>Welcome</h2><p>Pick a name to start. This is a play-money game.</p><input id="loginName" maxlength="20" placeholder="Your name" autocomplete="nickname"><button class="primary" id="loginBtn">START PLAYING</button><div id="loginErr"></div></div></div>
+<div id="login"><div class="box"><div style="font-size:42px">🚀</div><h2>Welcome</h2><p>Enter your name to start. Real-money mode is enabled.</p><input id="loginName" maxlength="20" placeholder="Your name" autocomplete="nickname"><button class="primary" id="loginBtn">START PLAYING</button><div id="loginErr"></div></div></div>
 
 <div class="modal" id="menuM"><div class="box"><h2>Menu</h2><button class="plain" id="sfxB"></button><button class="plain" id="musB"></button><button class="plain" id="out">🔐 Log out</button><button class="plain" id="closeMenu">✕ Close</button></div></div>
 
@@ -179,6 +180,7 @@ html,body{height:100%;margin:0;overflow:hidden}
     </div>
 
     <div class="walletForm active" id="depositForm">
+      <input id="depEmail" type="email" inputmode="email" placeholder="Email for payment receipt">
       <input id="depAmount" type="number" min="100" step="1" inputmode="numeric" placeholder="Deposit amount (₦)">
       <button class="primary" id="depositBtn">💰 CONTINUE TO PAYMENT</button>
       <div class="walletNote">Payment is handled by the secure payment provider. Your game balance is credited only after the server verifies the payment.</div>
@@ -199,7 +201,7 @@ html,body{height:100%;margin:0;overflow:hidden}
   </div>
 </div>
 
-<div class="modal" id="bonusM"><div class="box" style="text-align:center"><h2>🎁 Welcome bonus</h2><div style="font-size:40px;color:var(--gold);font-weight:900">500 🪙</div><p style="color:var(--muted);font-size:13px">Play coins. They have no cash value.</p><button class="primary" id="claim">CLAIM NOW</button><button class="plain" id="closeBonus" style="text-align:center">CLOSE</button></div></div>
+<div class="modal" id="bonusM"><div class="box" style="text-align:center"><h2>🎁 First-deposit bonus</h2><div style="font-size:40px;color:var(--gold);font-weight:900">₦50</div><p style="color:var(--muted);font-size:13px">After your first successful deposit, you get one ₦50 bonus bet. The ₦50 stake itself is not withdrawable. Only profit from the bonus bet becomes withdrawable.</p><button class="primary" id="claim">USE ₦50 BONUS</button><button class="plain" id="closeBonus" style="text-align:center">CLOSE</button></div></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -211,6 +213,7 @@ const fmt=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
 const cls=v=>v<2?'w':v<10?'g':v<50?'p':'o';
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const esc=t=>String(t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+let bonusMode=false;
 let token=ls('crashToken');
 if(!token){token=[...crypto.getRandomValues(new Uint8Array(12))].map(x=>x.toString(16).padStart(2,'0')).join('');ls('crashToken',token)}
 
@@ -255,15 +258,27 @@ function onSnap(d){
 function render(){
   const st=me.st;
   $('uname').textContent=me.name;$('av').textContent=me.name[0].toUpperCase();$('bal').textContent=fmt(me.bal);if($('walletBal'))$('walletBal').textContent=fmt(me.bal);
-  $('pnl').textContent=(me.pnl>=0?'+':'')+fmt(me.pnl);$('pnl').className=me.pnl>=0?'win':'lose';
+  $('pnl').textContent=(me.pnl>=0?'+':'')+fmt(me.pnl);
+  if($('bonusBetBtn')){$('bonusBetBtn').disabled=!!me.bet || !me.bonusAvailable;}
+  $('pnl').className=me.pnl>=0?'win':'lose';
   const hist=S.history,chip=v=>'<span class="'+cls(v)+'">'+v.toFixed(2)+'x</span>';
   $('recent').innerHTML='<span class="lbl">RECENT</span>'+hist.slice(0,12).map(chip).join('');
   $('hrecent').innerHTML=hist.length?hist.map(chip).join(''):'<span class="ph">Waiting for the first round…</span>';
   $('stats').innerHTML='<div><b>'+st.r+'</b><small>Rounds played</small></div><div><b>'+(st.r?Math.round(st.w/st.r*100):0)+'%</b><small>Cash-out rate</small></div><div><b>'+(st.best?st.best.toFixed(2)+'x':'—')+'</b><small>Best multiplier</small></div><div><b>🪙 '+fmt(st.big)+'</b><small>Biggest win</small></div>';
   $('log').innerHTML=me.log.length?me.log.map(l=>'<div class="item"><span>'+(l.at?'Cashed out at '+l.at.toFixed(2)+'x':'Crashed at '+l.crash.toFixed(2)+'x')+'</span><span class="'+(l.profit>0?'win':'lose')+'">'+(l.profit>0?'+':'')+fmt(l.profit)+'</span></div>').join(''):'<div style="color:var(--muted)">No rounds yet. Open the game and place a bet.</div>';
   const b=$('go'),bt=me.bet;b.className='go';b.disabled=false;
-  if(phase==='count'){if(bt){b.classList.add('cancel');b.innerHTML='CANCEL BET<small>Bet: 🪙 '+fmt(bt.amt)+'</small>'}else if(me.bal<MIN){b.innerHTML='RESTORE COINS<small>Your balance is empty</small>'}else b.innerHTML='PLACE BET<small>Next round starts soon</small>'}
-  else if(phase==='fly'){if(bt&&!bt.at){b.classList.add('cash');b.innerHTML='CASH OUT<small>🪙 '+fmt(bt.amt*mult)+'</small>'}else{b.disabled=true;b.innerHTML=bt?'CASHED OUT':'WAITING<small>Bet opens next round</small>'}}
+  const bb=$('bonusBetBtn');
+  if(bb){
+    bb.disabled=!!bt || !me.bonusAvailable;
+    bb.textContent=me.bonusAvailable?(bonusMode?'🎁 BONUS BET SELECTED':'🎁 USE ₦50 BONUS BET'):(me.bonusUsed?'🎁 BONUS USED':'🎁 BONUS LOCKED — FIRST DEPOSIT');
+  }
+  if(phase==='count'){
+    if(bt){b.classList.add('cancel');b.innerHTML=(bt.source==='bonus'?'CANCEL BONUS BET':'CANCEL BET')+'<small>Bet: ₦'+fmt(bt.amt)+'</small>'}
+    else if(bonusMode){b.innerHTML='PLACE ₦50 BONUS BET<small>Only bonus profit becomes withdrawable</small>'}
+    else if(me.bal<MIN){b.disabled=true;b.innerHTML='DEPOSIT TO PLAY<small>Wallet balance is empty</small>'}
+    else b.innerHTML='PLACE BET<small>Next round starts soon</small>'
+  }
+  else if(phase==='fly'){if(bt&&!bt.at){b.classList.add('cash');b.innerHTML='CASH OUT<small>₦ '+fmt(bt.amt*mult)+'</small>'}else{b.disabled=true;b.innerHTML=bt?'CASHED OUT':'WAITING<small>Bet opens next round</small>'}}
   else{b.disabled=true;b.innerHTML='ROUND OVER<small>Next round starting…</small>'}
 }
 function tick(){
@@ -295,10 +310,20 @@ $('dbl').onclick=()=>{$('amt').value=Math.min(MAX,clampBet()*2);sync()};
 document.querySelectorAll('.quick button').forEach(b=>b.onclick=()=>{const v=b.dataset.v;$('amt').value=v==='max'?Math.max(MIN,Math.min(MAX,Math.floor(me?me.bal:MIN))):v;sync()});
 function drag(e){const r=$('slider').getBoundingClientRect();const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));$('amt').value=Math.max(MIN,Math.round((MIN+p*(MAX-MIN))/10)*10);sync()}
 $('slider').addEventListener('pointerdown',e=>{drag(e);const mv=ev=>drag(ev),up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up)};addEventListener('pointermove',mv);addEventListener('pointerup',up)});
+$('bonusBetBtn').onclick=()=>{
+  if(!me||me.bet||!me.bonusAvailable)return;
+  bonusMode=!bonusMode;
+  if(bonusMode){$('amt').value=50;$('auto').value='';}
+  sync();render();
+};
 $('go').onclick=()=>{
   if(!me)return;const bt=me.bet;
-  if(phase==='count'){if(bt)api('cancel');else if(me.bal<MIN)api('restore');else api('bet',{amt:clampBet(),auto:auto()}).then(j=>j.ok&&tone(660))}
-  else if(phase==='fly'&&bt&&!bt.at)api('cashout');
+  if(phase==='count'){
+    if(bt)api('cancel').then(j=>{if(j.ok)bonusMode=false;render()});
+    else if(bonusMode)api('bet',{amt:50,auto:auto(),useBonus:true}).then(j=>{if(j.ok){bonusMode=false;tone(660)}render()});
+    else if(me.bal<MIN)openWallet('dep');
+    else api('bet',{amt:clampBet(),auto:auto(),useBonus:false}).then(j=>j.ok&&tone(660));
+  } else if(phase==='fly'&&bt&&!bt.at)api('cashout');
 };
 
 
@@ -320,6 +345,7 @@ function walletTab(which){
   walletMsg('');
 }
 function openWallet(which='dep'){
+  if($('depEmail'))$('depEmail').value=ls('crashEmail')||'';
   walletBalance();
   walletTab(which);
   show('walletM');
@@ -333,9 +359,12 @@ $('walletClose').onclick=()=>hide('walletM');
 
 $('depositBtn').onclick=async()=>{
   const amount=Math.floor(Number($('depAmount').value)||0);
+  const email=$('depEmail').value.trim();
+  if(!email||!email.includes('@')){walletMsg('Enter a valid email address.');return}
   if(amount<100){walletMsg('Minimum deposit is ₦100.');return}
+  ls('crashEmail',email);
   walletMsg('Opening secure payment…');
-  const j=await api('deposit',{amount});
+  const j=await api('deposit',{amount,email});
   if(!j.ok){walletMsg(j.error||'Deposit could not be started.');return}
   /*
     The backend should return a verified payment authorization URL as:
@@ -376,10 +405,16 @@ $('withdrawBtn').onclick=async()=>{
 /* menu, bonus, navigation, login */
 $('menuBtn').onclick=$('nProf').onclick=()=>{labels();show('menuM')};
 $('closeMenu').onclick=()=>hide('menuM');
-function bonusUI(){const done=me&&me.bonus;$('claim').disabled=!!done;$('claim').textContent=done?'ALREADY CLAIMED':'CLAIM NOW'}
+function bonusUI(){
+  const available=!!(me&&me.bonusAvailable);
+  const used=!!(me&&me.bonusUsed);
+  $('claim').disabled=!available;
+  $('claim').textContent=available?'USE ₦50 BONUS':'BONUS '+(used?'USED':'LOCKED — MAKE FIRST DEPOSIT');
+}
 $('nRew').onclick=()=>{bonusUI();show('bonusM')};
 $('closeBonus').onclick=()=>hide('bonusM');
-$('claim').onclick=async()=>{const j=await api('bonus');if(j.ok){tone(880);bonusUI()}};
+$('claim').onclick=()=>{if(me&&me.bonusAvailable){hide('bonusM');bonusMode=true;$('amt').value=50;sync();render()}};
+$('depEmail').value=ls('crashEmail')||'';
 function showView(v){['Home','Game'].forEach(n=>{const on=v===n.toLowerCase();$('v'+n).classList.toggle('on',on);$('n'+n).classList.toggle('on',on)})}
 $('nHome').onclick=()=>showView('home');$('nGame').onclick=$('play').onclick=()=>showView('game');
 function enter(n){ls('crashName',n);hide('login');startMusic();connect()}
