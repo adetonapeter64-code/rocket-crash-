@@ -1,1022 +1,1795 @@
-const http = require("http");
-const https = require("https");
-const fs = require("fs");
-const path = require("path");
-const { URL } = require("url");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crazy Crash Rockets — Admin</title>
 
-const PORT = process.env.PORT || 3000;
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const GAME_URL = process.env.GAME_URL;
-const ADMIN_KEY = process.env.ADMIN_KEY || "change-this-admin-key";
-const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, "game_bot_data.json");
-const TIMEZONE = "Africa/Lagos";
-
-if (!BOT_TOKEN) {
-  console.error("BOT_TOKEN is missing");
-  process.exit(1);
+<style>
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
 }
 
-if (!GAME_URL) {
-  console.error("GAME_URL is missing");
-  process.exit(1);
+body{
+  margin:0;
+  background:#05070b;
+  color:#fff;
+  font-family:Arial,Helvetica,sans-serif;
 }
 
-const DEFAULT_SLOTS = [
-  {
-    id: 1,
-    enabled: true,
-    time: "09:00",
-    text: "🎁 The daily case is already waiting for you!\n\nGrab it right now!",
-    button: "🎮 PLAY NOW",
-    lastSentDate: ""
-  },
-  {
-    id: 2,
-    enabled: true,
-    time: "15:00",
-    text: "🚀 The rocket is ready for takeoff!\n\nCome and play your next round.",
-    button: "🎮 PLAY NOW",
-    lastSentDate: ""
-  },
-  {
-    id: 3,
-    enabled: true,
-    time: "20:00",
-    text: "🔥 Your next round is waiting!\n\nDon’t miss it.",
-    button: "🎮 PLAY NOW",
-    lastSentDate: ""
-  }
-];
-
-let db = {
-  users: {},
-  slots: DEFAULT_SLOTS
-};
-
-function loadDB() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const parsed = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-
-      db = {
-        users: parsed.users || {},
-        slots:
-          Array.isArray(parsed.slots) && parsed.slots.length
-            ? parsed.slots.slice(0, 3)
-            : DEFAULT_SLOTS
-      };
-    }
-  } catch (e) {
-    console.error("Database load failed:", e.message);
-  }
-
-  while (db.slots.length < 3) {
-    db.slots.push({ ...DEFAULT_SLOTS[db.slots.length] });
-  }
-
-  db.slots = db.slots.slice(0, 3).map((s, i) => ({
-    ...DEFAULT_SLOTS[i],
-    ...s,
-    id: i + 1,
-    enabled: s.enabled !== false,
-    time: /^\d{2}:\d{2}$/.test(s.time || "")
-      ? s.time
-      : DEFAULT_SLOTS[i].time,
-    text: String(s.text || DEFAULT_SLOTS[i].text).slice(0, 4000),
-    button: String(s.button || DEFAULT_SLOTS[i].button).slice(0, 100)
-  }));
-
-  saveDB();
+header{
+  position:sticky;
+  top:0;
+  z-index:20;
+  background:#090d14;
+  border-bottom:1px solid #202938;
+  padding:16px;
 }
 
-function saveDB() {
-  try {
-    const dir = path.dirname(DATA_FILE);
+.header-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
 
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+.logo{
+  font-size:19px;
+  font-weight:800;
+}
 
-    const temp = DATA_FILE + ".tmp";
+.logo span{
+  color:#ffcc00;
+}
 
-    fs.writeFileSync(
-      temp,
-      JSON.stringify(db, null, 2)
+.status{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  color:#9da8b8;
+}
+
+.dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#555;
+}
+
+.dot.online{
+  background:#19e68c;
+  box-shadow:0 0 10px #19e68c;
+}
+
+.container{
+  width:100%;
+  max-width:1100px;
+  margin:auto;
+  padding:16px;
+}
+
+.login{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+
+.login-box{
+  width:100%;
+  max-width:420px;
+  background:#0b1018;
+  border:1px solid #202938;
+  border-radius:20px;
+  padding:24px;
+}
+
+.login-box h1{
+  margin:0 0 8px;
+  font-size:24px;
+}
+
+.login-box p{
+  margin:0 0 22px;
+  color:#8e9aac;
+  font-size:14px;
+}
+
+input,
+button{
+  font:inherit;
+}
+
+input{
+  width:100%;
+  background:#060a10;
+  border:1px solid #283244;
+  color:#fff;
+  padding:13px;
+  border-radius:11px;
+  outline:none;
+}
+
+input:focus{
+  border-color:#ffcc00;
+}
+
+button{
+  border:0;
+  border-radius:11px;
+  padding:12px 15px;
+  cursor:pointer;
+  font-weight:700;
+}
+
+.primary{
+  background:#ffcc00;
+  color:#111;
+}
+
+.secondary{
+  background:#18202d;
+  color:#fff;
+}
+
+.danger{
+  background:#35151b;
+  color:#ff6b7b;
+}
+
+.success{
+  background:#103425;
+  color:#55e69b;
+}
+
+.login button{
+  width:100%;
+  margin-top:12px;
+}
+
+.hidden{
+  display:none!important;
+}
+
+.error{
+  color:#ff6878;
+  margin-top:12px;
+  font-size:13px;
+}
+
+.message{
+  margin-top:12px;
+  padding:11px;
+  border-radius:10px;
+  background:#101722;
+  color:#b9c4d3;
+  font-size:13px;
+}
+
+.dashboard{
+  display:none;
+}
+
+.dashboard.show{
+  display:block;
+}
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-bottom:18px;
+}
+
+.card{
+  background:#0b1018;
+  border:1px solid #202938;
+  border-radius:16px;
+  padding:15px;
+}
+
+.card-title{
+  color:#8793a5;
+  font-size:12px;
+  margin-bottom:8px;
+}
+
+.card-value{
+  font-size:22px;
+  font-weight:800;
+}
+
+.card-value.green{
+  color:#35e695;
+}
+
+.card-value.yellow{
+  color:#ffcc00;
+}
+
+.card-value.red{
+  color:#ff6374;
+}
+
+.section{
+  background:#0b1018;
+  border:1px solid #202938;
+  border-radius:17px;
+  margin-bottom:16px;
+  overflow:hidden;
+}
+
+.section-head{
+  padding:15px;
+  border-bottom:1px solid #202938;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+
+.section-title{
+  font-size:16px;
+  font-weight:800;
+}
+
+.section-body{
+  padding:15px;
+}
+
+.actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.table-wrap{
+  width:100%;
+  overflow-x:auto;
+}
+
+table{
+  width:100%;
+  min-width:700px;
+  border-collapse:collapse;
+}
+
+th,
+td{
+  padding:12px 10px;
+  border-bottom:1px solid #1b2430;
+  text-align:left;
+  font-size:13px;
+}
+
+th{
+  color:#8d99aa;
+  font-size:11px;
+  text-transform:uppercase;
+}
+
+td{
+  color:#dce2ea;
+}
+
+.badge{
+  display:inline-block;
+  padding:5px 8px;
+  border-radius:8px;
+  font-size:11px;
+  font-weight:700;
+}
+
+.badge.green{
+  background:#103425;
+  color:#50e99a;
+}
+
+.badge.yellow{
+  background:#332c0b;
+  color:#ffda3e;
+}
+
+.badge.red{
+  background:#35151b;
+  color:#ff6979;
+}
+
+.badge.blue{
+  background:#10283d;
+  color:#5db7ff;
+}
+
+.empty{
+  padding:25px;
+  text-align:center;
+  color:#7f8a9a;
+}
+
+.finance-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+
+.finance-box{
+  background:#070b11;
+  border:1px solid #1c2633;
+  border-radius:12px;
+  padding:13px;
+}
+
+.finance-label{
+  font-size:11px;
+  color:#7f8a9a;
+}
+
+.finance-value{
+  margin-top:6px;
+  font-size:18px;
+  font-weight:800;
+}
+
+.withdrawal-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.small{
+  padding:8px 10px;
+  font-size:11px;
+}
+
+.player-tools{
+  display:flex;
+  gap:8px;
+  margin-bottom:12px;
+}
+
+.player-tools input{
+  flex:1;
+}
+
+.notice{
+  background:#101722;
+  border:1px solid #202938;
+  border-radius:12px;
+  padding:12px;
+  color:#aeb9c8;
+  font-size:13px;
+  line-height:1.5;
+}
+
+@media(max-width:800px){
+  .cards{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .finance-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+
+@media(max-width:480px){
+  .container{
+    padding:10px;
+  }
+
+  header{
+    padding:13px 10px;
+  }
+
+  .cards{
+    gap:8px;
+  }
+
+  .card{
+    padding:12px;
+  }
+
+  .card-value{
+    font-size:18px;
+  }
+
+  .finance-grid{
+    grid-template-columns:1fr 1fr;
+  }
+
+  button{
+    padding:10px 12px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="login">
+
+  <div class="login-box">
+
+    <h1>🚀 Crazy Crash Rockets</h1>
+
+    <p>
+      Secure administrator control panel
+    </p>
+
+    <input
+      id="adminKey"
+      type="password"
+      placeholder="Enter admin key"
+      autocomplete="off"
+    >
+
+    <button
+      class="primary"
+      onclick="login()"
+    >
+      🔐 ENTER ADMIN
+    </button>
+
+    <div id="loginError" class="error"></div>
+
+  </div>
+
+</div>
+
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="dashboard">
+
+<header>
+
+  <div class="header-row">
+
+    <div class="logo">
+      🚀 CRAZY <span>CRASH</span> ROCKETS
+    </div>
+
+    <div class="status">
+      <span id="statusDot" class="dot"></span>
+      <span id="statusText">Offline</span>
+    </div>
+
+  </div>
+
+</header>
+
+
+<div class="container">
+
+  <!-- TOP CARDS -->
+
+  <div class="cards">
+
+    <div class="card">
+      <div class="card-title">👥 PLAYERS</div>
+      <div id="totalPlayers" class="card-value">0</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🟢 ONLINE</div>
+      <div id="onlinePlayers" class="card-value green">0</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💰 DEPOSITED</div>
+      <div id="totalDeposited" class="card-value yellow">₦0</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💸 WITHDRAWN</div>
+      <div id="totalWithdrawn" class="card-value red">₦0</div>
+    </div>
+
+  </div>
+
+
+  <!-- CONTROL -->
+
+  <div class="section">
+
+    <div class="section-head">
+
+      <div class="section-title">
+        ⚙️ Control
+      </div>
+
+      <button
+        class="secondary small"
+        onclick="refreshAll()"
+      >
+        🔄 Refresh
+      </button>
+
+    </div>
+
+    <div class="section-body">
+
+      <div class="notice">
+        Admin panel is connected directly to the
+        Crazy Crash Rockets game server.
+        <br><br>
+        Use the sections below to monitor players,
+        deposits and withdrawals.
+      </div>
+
+      <div
+        id="globalMessage"
+        class="message hidden"
+      ></div>
+
+    </div>
+
+  </div>
+
+
+  <!-- FINANCE -->
+
+  <div class="section">
+
+    <div class="section-head">
+
+      <div class="section-title">
+        💰 Finance
+      </div>
+
+    </div>
+
+    <div class="section-body">
+
+      <div class="finance-grid">
+
+        <div class="finance-box">
+          <div class="finance-label">
+            TOTAL DEPOSITED
+          </div>
+          <div
+            id="financeDeposited"
+            class="finance-value"
+          >
+            ₦0
+          </div>
+        </div>
+
+        <div class="finance-box">
+          <div class="finance-label">
+            TOTAL WITHDRAWN
+          </div>
+          <div
+            id="financeWithdrawn"
+            class="finance-value"
+          >
+            ₦0
+          </div>
+        </div>
+
+        <div class="finance-box">
+          <div class="finance-label">
+            PENDING WITHDRAWALS
+          </div>
+          <div
+            id="financePending"
+            class="finance-value"
+          >
+            ₦0
+          </div>
+        </div>
+
+        <div class="finance-box">
+          <div class="finance-label">
+            DEPOSIT RECORDS
+          </div>
+          <div
+            id="depositCount"
+            class="finance-value"
+          >
+            0
+          </div>
+        </div>
+
+        <div class="finance-box">
+          <div class="finance-label">
+            WITHDRAWAL RECORDS
+          </div>
+          <div
+            id="withdrawalCount"
+            class="finance-value"
+          >
+            0
+          </div>
+        </div>
+
+        <div class="finance-box">
+          <div class="finance-label">
+            PLAYER LIABILITY
+          </div>
+          <div
+            id="balanceLiability"
+            class="finance-value"
+          >
+            ₦0
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- WITHDRAWALS -->
+
+  <div class="section">
+
+    <div class="section-head">
+
+      <div class="section-title">
+        💸 Withdrawals
+      </div>
+
+      <button
+        class="secondary small"
+        onclick="loadWithdrawals()"
+      >
+        🔄 Refresh
+      </button>
+
+    </div>
+
+    <div class="section-body">
+
+      <div class="table-wrap">
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Player</th>
+              <th>Amount</th>
+              <th>Bank</th>
+              <th>Account</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody id="withdrawalsBody">
+
+            <tr>
+              <td colspan="7">
+                <div class="empty">
+                  Loading withdrawals...
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- DEPOSITS -->
+
+  <div class="section">
+
+    <div class="section-head">
+
+      <div class="section-title">
+        💳 Deposits
+      </div>
+
+      <button
+        class="secondary small"
+        onclick="loadDeposits()"
+      >
+        🔄 Refresh
+      </button>
+
+    </div>
+
+    <div class="section-body">
+
+      <div class="table-wrap">
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>Reference</th>
+              <th>Player</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+
+          </thead>
+
+          <tbody id="depositsBody">
+
+            <tr>
+              <td colspan="5">
+                <div class="empty">
+                  Loading deposits...
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- PLAYERS -->
+
+  <div class="section">
+
+    <div class="section-head">
+
+      <div class="section-title">
+        👥 Players
+      </div>
+
+      <button
+        class="secondary small"
+        onclick="loadPlayers()"
+      >
+        🔄 Refresh
+      </button>
+
+    </div>
+
+    <div class="section-body">
+
+      <div class="player-tools">
+
+        <input
+          id="playerSearch"
+          placeholder="Search player..."
+          oninput="renderPlayers()"
+        >
+
+      </div>
+
+      <div class="table-wrap">
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Telegram</th>
+              <th>Balance</th>
+              <th>Rounds</th>
+              <th>Wins</th>
+              <th>Online</th>
+            </tr>
+
+          </thead>
+
+          <tbody id="playersBody">
+
+            <tr>
+              <td colspan="7">
+                <div class="empty">
+                  Loading players...
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+</div>
+
+</div>
+
+
+<script>
+
+let KEY = "";
+let playersData = [];
+
+
+function money(value){
+  const n = Number(value || 0);
+
+  return "₦" +
+    n.toLocaleString(
+      "en-NG",
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }
+    );
+}
+
+
+function escapeHtml(value){
+
+  return String(value ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+
+
+function setMessage(text){
+
+  const box =
+    document.getElementById(
+      "globalMessage"
     );
 
-    fs.renameSync(temp, DATA_FILE);
-  } catch (e) {
-    console.error("Database save failed:", e.message);
+  box.textContent = text;
+
+  box.classList.remove(
+    "hidden"
+  );
+
+  clearTimeout(
+    window.messageTimer
+  );
+
+  window.messageTimer =
+    setTimeout(
+      () =>
+        box.classList.add(
+          "hidden"
+        ),
+      5000
+    );
+}
+
+
+function setOnline(value){
+
+  const dot =
+    document.getElementById(
+      "statusDot"
+    );
+
+  const text =
+    document.getElementById(
+      "statusText"
+    );
+
+  if(value){
+
+    dot.classList.add(
+      "online"
+    );
+
+    text.textContent =
+      "Connected";
+
+  }else{
+
+    dot.classList.remove(
+      "online"
+    );
+
+    text.textContent =
+      "Offline";
   }
 }
 
-function telegram(method, body = {}) {
-  return new Promise((resolve, reject) => {
-    const data = JSON.stringify(body);
 
-    const req = https.request(
+async function api(
+  endpoint,
+  options = {}
+){
+
+  const headers =
+    Object.assign(
       {
-        hostname: "api.telegram.org",
-        path: `/bot${BOT_TOKEN}/${method}`,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(data)
-        }
+        "Content-Type":
+          "application/json",
+        "X-Admin-Key":
+          KEY
       },
-      res => {
-        let out = "";
+      options.headers || {}
+    );
 
-        res.on("data", c => {
-          out += c;
-        });
+  const response =
+    await fetch(
+      endpoint,
+      Object.assign(
+        {},
+        options,
+        {
+          headers
+        }
+      )
+    );
 
-        res.on("end", () => {
-          try {
-            const parsed = JSON.parse(out);
+  let data;
 
-            if (parsed.ok) {
-              resolve(parsed.result);
-            } else {
-              reject(
-                new Error(
-                  parsed.description || "Telegram API error"
-                )
-              );
-            }
-          } catch {
-            reject(new Error("Invalid Telegram response"));
-          }
-        });
+  try{
+    data =
+      await response.json();
+  }catch{
+    throw new Error(
+      "Server returned an invalid response"
+    );
+  }
+
+  if(
+    response.status === 401
+  ){
+
+    logout();
+
+    throw new Error(
+      "Admin key is not accepted"
+    );
+  }
+
+  if(
+    !response.ok ||
+    data.ok === false
+  ){
+
+    throw new Error(
+      data.error ||
+      "Request failed"
+    );
+  }
+
+  return data;
+}
+
+
+async function login(){
+
+  const input =
+    document.getElementById(
+      "adminKey"
+    );
+
+  const error =
+    document.getElementById(
+      "loginError"
+    );
+
+  const key =
+    input.value.trim();
+
+  if(!key){
+
+    error.textContent =
+      "Enter your admin key.";
+
+    return;
+  }
+
+  KEY = key;
+
+  try{
+
+    await api(
+      "/admin/api/finance",
+      {
+        method:
+          "POST",
+        body:
+          "{}"
       }
     );
 
-    req.on("error", reject);
+    localStorage.setItem(
+      "crazyCrashAdminKey",
+      KEY
+    );
 
-    req.write(data);
-    req.end();
-  });
-}
+    document
+      .getElementById(
+        "loginScreen"
+      )
+      .classList.add(
+        "hidden"
+      );
 
-function welcomeText(firstName) {
-  const name = firstName ? ` ${firstName}` : "";
+    document
+      .getElementById(
+        "dashboard"
+      )
+      .classList.add(
+        "show"
+      );
 
-  return (
-    `🚀 Welcome${name}!\n\n` +
-    `🎮 Crazy Crash Rockets is ready.\n\n` +
-    `Tap PLAY NOW to enter the game.`
-  );
-}
+    error.textContent = "";
 
-async function sendGameMessage(
-  chatId,
-  text,
-  buttonText = "🎮 PLAY NOW"
-) {
-  return telegram("sendMessage", {
-    chat_id: chatId,
-    text,
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: buttonText || "🎮 PLAY NOW",
-            web_app: {
-              url: GAME_URL
-            }
-          }
-        ]
-      ]
-    }
-  });
-}
+    setOnline(true);
 
-function registerUser(user, chatId) {
-  const id = String(user.id);
-  const now = new Date().toISOString();
+    await refreshAll();
 
-  if (!db.users[id]) {
-    db.users[id] = {
-      id: user.id,
-      chatId,
-      username: user.username || "",
-      firstName: user.first_name || "",
-      lastName: user.last_name || "",
-      startedAt: now,
-      lastSeen: now,
-      notificationsEnabled: true,
-      blocked: false
-    };
-  } else {
-    Object.assign(db.users[id], {
-      chatId,
-      username:
-        user.username ||
-        db.users[id].username ||
-        "",
-      firstName:
-        user.first_name ||
-        db.users[id].firstName ||
-        "",
-      lastName:
-        user.last_name ||
-        db.users[id].lastName ||
-        "",
-      lastSeen: now,
-      blocked: false
-    });
+  }catch(e){
+
+    KEY = "";
+
+    error.textContent =
+      e.message ||
+      "Unable to connect to admin server.";
+
+    setOnline(false);
   }
-
-  saveDB();
-
-  return db.users[id];
 }
 
-async function handleUpdate(update) {
-  if (
-    !update.message ||
-    !update.message.chat ||
-    !update.message.from
-  ) {
+
+function logout(){
+
+  KEY = "";
+
+  localStorage.removeItem(
+    "crazyCrashAdminKey"
+  );
+
+  document
+    .getElementById(
+      "dashboard"
+    )
+    .classList.remove(
+      "show"
+    );
+
+  document
+    .getElementById(
+      "loginScreen"
+    )
+    .classList.remove(
+      "hidden"
+    );
+
+  setOnline(false);
+}
+
+
+async function loadFinance(){
+
+  const data =
+    await api(
+      "/admin/api/finance",
+      {
+        method:
+          "POST",
+        body:
+          "{}"
+      }
+    );
+
+  document
+    .getElementById(
+      "totalDeposited"
+    )
+    .textContent =
+      money(
+        data.totalDeposited
+      );
+
+  document
+    .getElementById(
+      "totalWithdrawn"
+    )
+    .textContent =
+      money(
+        data.totalWithdrawn
+      );
+
+  document
+    .getElementById(
+      "financeDeposited"
+    )
+    .textContent =
+      money(
+        data.totalDeposited
+      );
+
+  document
+    .getElementById(
+      "financeWithdrawn"
+    )
+    .textContent =
+      money(
+        data.totalWithdrawn
+      );
+
+  document
+    .getElementById(
+      "financePending"
+    )
+    .textContent =
+      money(
+        data.pendingWithdrawals
+      );
+
+  document
+    .getElementById(
+      "depositCount"
+    )
+    .textContent =
+      data.depositsCount || 0;
+
+  document
+    .getElementById(
+      "withdrawalCount"
+    )
+    .textContent =
+      data.withdrawalsCount || 0;
+
+  document
+    .getElementById(
+      "balanceLiability"
+    )
+    .textContent =
+      money(
+        data.balanceLiability
+      );
+}
+
+
+async function loadPlayers(){
+
+  const data =
+    await api(
+      "/admin/api/state",
+      {
+        method:
+          "POST",
+        body:
+          "{}"
+      }
+    );
+
+  playersData =
+    Array.isArray(
+      data.players
+    )
+      ? data.players
+      : [];
+
+  document
+    .getElementById(
+      "totalPlayers"
+    )
+    .textContent =
+      data.total ||
+      playersData.length;
+
+  document
+    .getElementById(
+      "onlinePlayers"
+    )
+    .textContent =
+      data.online ||
+      playersData.filter(
+        p => p.online
+      ).length;
+
+  renderPlayers();
+}
+
+
+function renderPlayers(){
+
+  const body =
+    document.getElementById(
+      "playersBody"
+    );
+
+  const search =
+    String(
+      document.getElementById(
+        "playerSearch"
+      ).value || ""
+    )
+      .toLowerCase()
+      .trim();
+
+  const rows =
+    playersData.filter(
+      p => {
+
+        if(!search)
+          return true;
+
+        return (
+          String(
+            p.name || ""
+          )
+            .toLowerCase()
+            .includes(search)
+
+          ||
+
+          String(
+            p.id || ""
+          )
+            .toLowerCase()
+            .includes(search)
+        );
+      }
+    );
+
+  if(!rows.length){
+
+    body.innerHTML =
+      `
+      <tr>
+        <td colspan="7">
+          <div class="empty">
+            No players found.
+          </div>
+        </td>
+      </tr>
+      `;
+
     return;
   }
 
-  const msg = update.message;
 
-  const user = registerUser(
-    msg.from,
-    msg.chat.id
-  );
+  body.innerHTML =
+    rows.map(
+      p => {
 
-  const text = String(
-    msg.text || ""
+        const online =
+          p.online;
+
+        const tg =
+          p.tg &&
+          (
+            p.tg.username
+              ? "@" +
+                p.tg.username
+              : p.tg.name ||
+                "Telegram"
+          );
+
+        return `
+          <tr>
+
+            <td>
+              ${escapeHtml(p.id)}
+            </td>
+
+            <td>
+              ${escapeHtml(p.name || "Player")}
+            </td>
+
+            <td>
+              ${escapeHtml(tg || "-")}
+            </td>
+
+            <td>
+              ${money(p.bal)}
+            </td>
+
+            <td>
+              ${Number(p.rounds || 0)}
+            </td>
+
+            <td>
+              ${Number(p.wins || 0)}
+            </td>
+
+            <td>
+              ${
+                online
+                  ? '<span class="badge green">ONLINE</span>'
+                  : '<span class="badge red">OFFLINE</span>'
+              }
+            </td>
+
+          </tr>
+        `;
+      }
+    ).join("");
+}
+
+
+async function loadDeposits(){
+
+  const data =
+    await api(
+      "/admin/api/deposits",
+      {
+        method:
+          "POST",
+        body:
+          "{}"
+      }
+    );
+
+  const deposits =
+    Array.isArray(
+      data.deposits
+    )
+      ? data.deposits
+      : [];
+
+  const body =
+    document.getElementById(
+      "depositsBody"
+    );
+
+  if(!deposits.length){
+
+    body.innerHTML =
+      `
+      <tr>
+        <td colspan="5">
+          <div class="empty">
+            No deposits found.
+          </div>
+        </td>
+      </tr>
+      `;
+
+    return;
+  }
+
+
+  body.innerHTML =
+    deposits.map(
+      d => {
+
+        let statusClass =
+          "yellow";
+
+        if(
+          d.status ===
+          "success"
+        )
+          statusClass =
+            "green";
+
+        if(
+          d.status ===
+          "failed"
+        )
+          statusClass =
+            "red";
+
+        return `
+          <tr>
+
+            <td>
+              ${escapeHtml(d.reference || d.id || "-")}
+            </td>
+
+            <td>
+              ${escapeHtml(d.playerId || "-")}
+            </td>
+
+            <td>
+              ${money(d.amount)}
+            </td>
+
+            <td>
+              <span class="badge ${statusClass}">
+                ${escapeHtml(d.status || "unknown")}
+              </span>
+            </td>
+
+            <td>
+              ${
+                d.createdAt
+                  ? new Date(d.createdAt).toLocaleString()
+                  : "-"
+              }
+            </td>
+
+          </tr>
+        `;
+      }
+    ).join("");
+}
+
+
+async function loadWithdrawals(){
+
+  const data =
+    await api(
+      "/admin/api/withdrawals",
+      {
+        method:
+          "POST",
+        body:
+          "{}"
+      }
+    );
+
+  const withdrawals =
+    Array.isArray(
+      data.withdrawals
+    )
+      ? data.withdrawals
+      : [];
+
+  const body =
+    document.getElementById(
+      "withdrawalsBody"
+    );
+
+
+  if(!withdrawals.length){
+
+    body.innerHTML =
+      `
+      <tr>
+        <td colspan="7">
+          <div class="empty">
+            No withdrawals found.
+          </div>
+        </td>
+      </tr>
+      `;
+
+    return;
+  }
+
+
+  body.innerHTML =
+    withdrawals.map(
+      w => {
+
+        let statusClass =
+          "yellow";
+
+        if(
+          w.status ===
+            "paid" ||
+          w.status ===
+            "processing"
+        )
+          statusClass =
+            "green";
+
+        if(
+          w.status ===
+            "failed" ||
+          w.status ===
+            "rejected"
+        )
+          statusClass =
+            "red";
+
+
+        let actions = "-";
+
+
+        if(
+          w.status ===
+          "pending"
+        ){
+
+          actions =
+            `
+            <div class="withdrawal-actions">
+
+              <button
+                class="success small"
+                onclick="approveWithdrawal('${escapeJs(w.id)}')"
+              >
+                ✅ Approve
+              </button>
+
+              <button
+                class="danger small"
+                onclick="rejectWithdrawal('${escapeJs(w.id)}')"
+              >
+                ❌ Reject
+              </button>
+
+            </div>
+            `;
+        }
+
+
+        if(
+          w.status ===
+          "processing"
+        ){
+
+          actions =
+            `
+            <button
+              class="secondary small"
+              onclick="verifyTransfer('${escapeJs(w.id)}')"
+            >
+              🔎 Verify
+            </button>
+            `;
+        }
+
+
+        return `
+          <tr>
+
+            <td>
+              ${escapeHtml(w.id || "-")}
+            </td>
+
+            <td>
+              ${escapeHtml(w.playerId || "-")}
+            </td>
+
+            <td>
+              <strong>
+                ${money(w.amount)}
+              </strong>
+            </td>
+
+            <td>
+              ${escapeHtml(w.bankName || "-")}
+            </td>
+
+            <td>
+              ${escapeHtml(w.accountNumber || "-")}
+            </td>
+
+            <td>
+              <span class="badge ${statusClass}">
+                ${escapeHtml(w.status || "unknown")}
+              </span>
+            </td>
+
+            <td>
+              ${actions}
+            </td>
+
+          </tr>
+        `;
+      }
+    ).join("");
+}
+
+
+function escapeJs(value){
+
+  return String(value || "")
+    .replace(/\\/g,"\\\\")
+    .replace(/'/g,"\\'");
+}
+
+
+async function approveWithdrawal(id){
+
+  if(
+    !confirm(
+      "Approve this withdrawal and start the Paystack payout?"
+    )
   )
-    .trim()
-    .toLowerCase();
-
-  if (text === "/start") {
-    user.notificationsEnabled = true;
-
-    saveDB();
-
-    await sendGameMessage(
-      msg.chat.id,
-      welcomeText(user.firstName)
-    );
-
     return;
-  }
 
-  if (text === "/game") {
-    user.notificationsEnabled = true;
+  try{
 
-    saveDB();
+    const data =
+      await api(
+        "/admin/api/approve-withdrawal",
+        {
+          method:
+            "POST",
+          body:
+            JSON.stringify({
+              id
+            })
+        }
+      );
 
-    await sendGameMessage(
-      msg.chat.id,
-      "🎮 Your game is ready. Tap below to play."
-    );
+    if(
+      data.refunded
+    ){
 
-    return;
-  }
+      setMessage(
+        "⚠️ Paystack payout failed. The player's money was refunded: " +
+        money(data.refundAmount)
+      );
 
-  if (text === "/stop") {
-    user.notificationsEnabled = false;
+    }else{
 
-    saveDB();
+      setMessage(
+        "✅ Withdrawal payout started."
+      );
+    }
 
-    await telegram("sendMessage", {
-      chat_id: msg.chat.id,
-      text:
-        "🔕 Daily notifications are now OFF.\n\n" +
-        "Send /start anytime to turn them back ON."
-    });
+    await refreshAll();
 
-    return;
-  }
+  }catch(e){
 
-  if (text === "/help") {
-    await telegram("sendMessage", {
-      chat_id: msg.chat.id,
-      text:
-        "🎮 Commands\n\n" +
-        "/start — open the game\n" +
-        "/game — play now\n" +
-        "/stop — stop daily notifications\n" +
-        "/help — show this help"
-    });
-
-    return;
-  }
-
-  await sendGameMessage(
-    msg.chat.id,
-    "🎮 The game is ready. Tap PLAY NOW below."
-  );
-}
-
-let polling = false;
-let offset = 0;
-
-async function pollTelegram() {
-  if (polling) return;
-
-  polling = true;
-
-  try {
-    await telegram("deleteWebhook", {
-      drop_pending_updates: false
-    });
-  } catch (e) {
-    console.error(
-      "deleteWebhook:",
+    setMessage(
+      "❌ " +
       e.message
     );
   }
-
-  while (true) {
-    try {
-      const updates = await telegram(
-        "getUpdates",
-        {
-          offset,
-          timeout: 50,
-          allowed_updates: ["message"]
-        }
-      );
-
-      for (const update of updates) {
-        offset = update.update_id + 1;
-
-        try {
-          await handleUpdate(update);
-        } catch (e) {
-          console.error(
-            "Update error:",
-            e.message
-          );
-        }
-      }
-    } catch (e) {
-      console.error(
-        "Telegram polling:",
-        e.message
-      );
-
-      await new Promise(resolve =>
-        setTimeout(resolve, 3000)
-      );
-    }
-  }
 }
 
-function lagosParts() {
-  const parts =
-    new Intl.DateTimeFormat(
-      "en-GB",
+
+async function rejectWithdrawal(id){
+
+  const reason =
+    prompt(
+      "Reason for rejecting this withdrawal:",
+      "Rejected by admin"
+    );
+
+  if(
+    reason === null
+  )
+    return;
+
+  try{
+
+    await api(
+      "/admin/api/reject-withdrawal",
       {
-        timeZone: TIMEZONE,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
+        method:
+          "POST",
+        body:
+          JSON.stringify({
+            id,
+            reason
+          })
       }
-    ).formatToParts(new Date());
+    );
 
-  const get = type =>
-    parts.find(
-      p => p.type === type
-    )?.value || "";
+    setMessage(
+      "✅ Withdrawal rejected and balance restored."
+    );
 
-  return {
-    date:
-      `${get("year")}-` +
-      `${get("month")}-` +
-      `${get("day")}`,
+    await refreshAll();
 
-    time:
-      `${get("hour")}:` +
-      `${get("minute")}`
-  };
-}
+  }catch(e){
 
-async function sendSlot(slot) {
-  const users =
-    Object.values(db.users);
-
-  let sent = 0;
-  let skipped = 0;
-  let failed = 0;
-
-  for (const user of users) {
-    if (
-      !user.notificationsEnabled ||
-      user.blocked
-    ) {
-      skipped++;
-      continue;
-    }
-
-    try {
-      await sendGameMessage(
-        user.chatId,
-        slot.text,
-        slot.button
-      );
-
-      sent++;
-    } catch (e) {
-      failed++;
-
-      const message =
-        String(e.message || "")
-          .toLowerCase();
-
-      if (
-        message.includes(
-          "blocked by the user"
-        ) ||
-        message.includes(
-          "chat not found"
-        ) ||
-        message.includes(
-          "user is deactivated"
-        )
-      ) {
-        user.blocked = true;
-        user.notificationsEnabled = false;
-      }
-    }
-
-    await new Promise(resolve =>
-      setTimeout(resolve, 60)
+    setMessage(
+      "❌ " +
+      e.message
     );
   }
-
-  saveDB();
-
-  return {
-    sent,
-    skipped,
-    failed
-  };
 }
 
-async function scheduler() {
-  const {
-    date,
-    time
-  } = lagosParts();
 
-  for (const slot of db.slots) {
-    if (!slot.enabled) continue;
+async function verifyTransfer(id){
 
-    if (slot.time !== time) continue;
+  try{
 
-    if (slot.lastSentDate === date) {
-      continue;
-    }
-
-    slot.lastSentDate = date;
-
-    saveDB();
-
-    try {
-      const result =
-        await sendSlot(slot);
-
-      console.log(
-        `Notification ${slot.id} ${date} ${time}:`,
-        result
-      );
-    } catch (e) {
-      console.error(
-        "Scheduled notification failed:",
-        e.message
-      );
-    }
-  }
-}
-
-setInterval(
-  scheduler,
-  30000
-);
-
-function sendJson(
-  res,
-  status,
-  data
-) {
-  const body =
-    JSON.stringify(data);
-
-  res.writeHead(status, {
-    "Content-Type":
-      "application/json; charset=utf-8",
-    "Cache-Control":
-      "no-store",
-    "Access-Control-Allow-Origin":
-      "*"
-  });
-
-  res.end(body);
-}
-
-function readBody(req) {
-  return new Promise(
-    (resolve, reject) => {
-      let data = "";
-
-      req.on(
-        "data",
-        chunk => {
-          data += chunk;
-
-          if (
-            data.length > 1000000
-          ) {
-            req.destroy();
-
-            reject(
-              new Error(
-                "Body too large"
-              )
-            );
-          }
-        }
-      );
-
-      req.on(
-        "end",
-        () => {
-          try {
-            resolve(
-              data
-                ? JSON.parse(data)
-                : {}
-            );
-          } catch {
-            reject(
-              new Error(
-                "Invalid JSON"
-              )
-            );
-          }
-        }
-      );
-
-      req.on(
-        "error",
-        reject
-      );
-    }
-  );
-}
-
-function authorized(
-  req,
-  url
-) {
-  const key =
-    req.headers["x-admin-key"] ||
-    url.searchParams.get("key");
-
-  return (
-    key &&
-    key === ADMIN_KEY
-  );
-}
-
-const server =
-  http.createServer(
-    async (req, res) => {
-      const url =
-        new URL(
-          req.url,
-          `http://${req.headers.host || "localhost"}`
-        );
-
-      if (
-        req.method === "OPTIONS"
-      ) {
-        res.writeHead(
-          204,
-          {
-            "Access-Control-Allow-Origin":
-              "*",
-            "Access-Control-Allow-Headers":
-              "Content-Type, X-Admin-Key",
-            "Access-Control-Allow-Methods":
-              "GET,POST,OPTIONS"
-          }
-        );
-
-        return res.end();
-      }
-
-      if (
-        url.pathname === "/health"
-      ) {
-        return sendJson(
-          res,
-          200,
-          {
-            ok: true,
-            service:
-              "Crazy Crash Rockets Game Bot",
-            timezone:
-              TIMEZONE,
-            users:
-              Object.keys(
-                db.users
-              ).length
-          }
-        );
-      }
-
-      if (
-        url.pathname ===
-          "/admin/notifications" &&
-        req.method === "GET"
-      ) {
-        if (
-          !authorized(
-            req,
-            url
-          )
-        ) {
-          return sendJson(
-            res,
-            401,
-            {
-              ok: false,
-              error:
-                "Unauthorized"
-            }
-          );
-        }
-
-        const users =
-          Object.values(
-            db.users
-          );
-
-        return sendJson(
-          res,
-          200,
-          {
-            ok: true,
-            timezone:
-              TIMEZONE,
-            gameUrl:
-              GAME_URL,
-            slots:
-              db.slots,
-            users: {
-              total:
-                users.length,
-
-              active:
-                users.filter(
-                  u =>
-                    u.notificationsEnabled &&
-                    !u.blocked
-                ).length,
-
-              blocked:
-                users.filter(
-                  u => u.blocked
-                ).length,
-
-              optedOut:
-                users.filter(
-                  u =>
-                    !u.notificationsEnabled &&
-                    !u.blocked
-                ).length
-            }
-          }
-        );
-      }
-
-      if (
-        url.pathname ===
-          "/admin/notifications-save" &&
-        req.method === "POST"
-      ) {
-        if (
-          !authorized(
-            req,
-            url
-          )
-        ) {
-          return sendJson(
-            res,
-            401,
-            {
-              ok: false,
-              error:
-                "Unauthorized"
-            }
-          );
-        }
-
-        try {
-          const body =
-            await readBody(req);
-
-          if (
-            !Array.isArray(
-              body.slots
-            )
-          ) {
-            return sendJson(
-              res,
-              400,
-              {
-                ok: false,
-                error:
-                  "slots must be an array"
-              }
-            );
-          }
-
-          db.slots =
-            [0, 1, 2].map(
-              i => {
-                const s =
-                  body.slots[i] ||
-                  {};
-
-                return {
-                  id: i + 1,
-
-                  enabled:
-                    s.enabled !==
-                    false,
-
-                  time:
-                    /^\d{2}:\d{2}$/.test(
-                      String(
-                        s.time || ""
-                      )
-                    )
-                      ? s.time
-                      : DEFAULT_SLOTS[i]
-                          .time,
-
-                  text:
-                    String(
-                      s.text || ""
-                    ).slice(
-                      0,
-                      4000
-                    ),
-
-                  button:
-                    String(
-                      s.button ||
-                        "🎮 PLAY NOW"
-                    ).slice(
-                      0,
-                      100
-                    ),
-
-                  lastSentDate:
-                    db.slots[i]
-                      ?.lastSentDate ||
-                    ""
-                };
-              }
-            );
-
-          saveDB();
-
-          return sendJson(
-            res,
-            200,
-            {
-              ok: true,
-              slots:
-                db.slots
-            }
-          );
-        } catch (e) {
-          return sendJson(
-            res,
-            400,
-            {
-              ok: false,
-              error:
-                e.message
-            }
-          );
-        }
-      }
-
-      if (
-        url.pathname ===
-          "/admin/notification-send-now" &&
-        req.method === "POST"
-      ) {
-        if (
-          !authorized(
-            req,
-            url
-          )
-        ) {
-          return sendJson(
-            res,
-            401,
-            {
-              ok: false,
-              error:
-                "Unauthorized"
-            }
-          );
-        }
-
-        try {
-          const body =
-            await readBody(req);
-
-          const index =
-            Number(
-              body.slot
-            );
-
-          const slot =
-            db.slots[index];
-
-          if (!slot) {
-            return sendJson(
-              res,
-              400,
-              {
-                ok: false,
-                error:
-                  "Invalid slot"
-              }
-            );
-          }
-
-          const result =
-            await sendSlot(
-              slot
-            );
-
-          return sendJson(
-            res,
-            200,
-            {
-              ok: true,
-              result
-            }
-          );
-        } catch (e) {
-          return sendJson(
-            res,
-            500,
-            {
-              ok: false,
-              error:
-                e.message
-            }
-          );
-        }
-      }
-
-      if (
-        url.pathname ===
-          "/admin/users" &&
-        req.method === "GET"
-      ) {
-        if (
-          !authorized(
-            req,
-            url
-          )
-        ) {
-          return sendJson(
-            res,
-            401,
-            {
-              ok: false,
-              error:
-                "Unauthorized"
-            }
-          );
-        }
-
-        const users =
-          Object.values(
-            db.users
-          ).map(u => ({
-            id: u.id,
-            chatId: u.chatId,
-            username:
-              u.username,
-            firstName:
-              u.firstName,
-            startedAt:
-              u.startedAt,
-            lastSeen:
-              u.lastSeen,
-            notificationsEnabled:
-              u.notificationsEnabled,
-            blocked:
-              u.blocked
-          }));
-
-        return sendJson(
-          res,
-          200,
-          {
-            ok: true,
-            users
-          }
-        );
-      }
-
-      sendJson(
-        res,
-        404,
+    const data =
+      await api(
+        "/admin/api/verify-transfer",
         {
-          ok: false,
-          error:
-            "Not found"
+          method:
+            "POST",
+          body:
+            JSON.stringify({
+              id
+            })
         }
       );
+
+    setMessage(
+      "🔎 Transfer status: " +
+      (
+        data.status ||
+        data.withdrawal?.status ||
+        "unknown"
+      )
+    );
+
+    await refreshAll();
+
+  }catch(e){
+
+    setMessage(
+      "❌ " +
+      e.message
+    );
+  }
+}
+
+
+async function refreshAll(){
+
+  try{
+
+    await Promise.all([
+      loadFinance(),
+      loadPlayers(),
+      loadDeposits(),
+      loadWithdrawals()
+    ]);
+
+    setOnline(true);
+
+  }catch(e){
+
+    setOnline(false);
+
+    setMessage(
+      "❌ " +
+      e.message
+    );
+  }
+}
+
+
+document
+  .getElementById(
+    "adminKey"
+  )
+  .addEventListener(
+    "keydown",
+    e => {
+
+      if(
+        e.key ===
+        "Enter"
+      ){
+
+        login();
+      }
+
     }
   );
 
-loadDB();
 
-server.listen(
-  PORT,
+window.addEventListener(
+  "load",
   () => {
-    console.log(
-      `Game Bot service running on port ${PORT}`
-    );
 
-    console.log(
-      `Game URL: ${GAME_URL}`
-    );
-
-    console.log(
-      `Timezone: ${TIMEZONE}`
-    );
-
-    telegram("getMe")
-      .then(me => {
-        console.log(
-          `Telegram bot connected: @${me.username}`
-        );
-
-        return telegram(
-          "setMyCommands",
-          {
-            commands: [
-              {
-                command:
-                  "start",
-                description:
-                  "Open the game"
-              },
-              {
-                command:
-                  "game",
-                description:
-                  "Play now"
-              },
-              {
-                command:
-                  "stop",
-                description:
-                  "Stop daily notifications"
-              },
-              {
-                command:
-                  "help",
-                description:
-                  "Show help"
-              }
-            ]
-          }
-        );
-      })
-      .then(
-        () =>
-          pollTelegram()
-      )
-      .catch(e =>
-        console.error(
-          "Telegram setup:",
-          e.message
-        )
+    const saved =
+      localStorage.getItem(
+        "crazyCrashAdminKey"
       );
+
+    if(saved){
+
+      document
+        .getElementById(
+          "adminKey"
+        )
+        .value =
+        saved;
+
+      login();
+
+    }
+
   }
 );
+
+</script>
+
+</body>
+  </html>
