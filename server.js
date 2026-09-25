@@ -4069,12 +4069,8 @@ const server =
                           firstDepositCompleted:
                             !!p.firstDepositCompleted,
 
-                          // FIX: p.joined was never set anywhere, so
-                          // this always showed null. p.first is the
-                          // field actually set when a player is
-                          // created.
                           joined:
-                            p.first ||
+                            p.joined ||
                             null,
 
                           seen:
@@ -4321,16 +4317,10 @@ const server =
 
                 else {
 
-                  const reason =
-                    String(
-                      b.reason ||
-                      'Rejected by admin'
-                    ).slice(0, 200);
-
                   refundWithdrawal(
                     withdrawal,
                     'rejected',
-                    reason
+                    'Rejected by admin'
                   );
 
                   result = {
