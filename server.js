@@ -1268,10 +1268,7 @@ const now =
 // GAME API
 // --------------------------------------------------
 
-const api = {
-
-
-  // -----------------------------------------------
+const api = {  // -----------------------------------------------
   // NORMAL / BONUS BET
   // -----------------------------------------------
 
@@ -1802,21 +1799,31 @@ const api = {
         .toString('hex');
 
 
+    // REQUIRED EDIT:
+    // Use the email submitted by the deposit form.
+    // Fall back to the saved player email if the form
+    // does not send one. Do not send the old .local
+    // placeholder addresses to Paystack.
     const email =
-      p.email ||
+      String(
+        b.email ||
+        p.email ||
+        ''
+      )
+        .trim();
 
-      (
-        p.tg &&
-        p.tg.id
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
 
-          ? 'tg' +
-            p.tg.id +
-            '@crazycrash.local'
+      return {
 
-          : 'player_' +
-            p.id +
-            '@crazycrash.local'
-      );
+        error:
+          'Enter a valid email address'
+      };
+    }
+
+    p.email = email;
 
 
     const payment =
@@ -2431,10 +2438,7 @@ const api = {
       id
     };
   }
-};
-
-
-// --------------------------------------------------
+};// --------------------------------------------------
 // PAYSTACK HTTP REQUEST
 // --------------------------------------------------
 
@@ -4384,10 +4388,7 @@ const server =
       );
 
     }
-  );
-
-
-// --------------------------------------------------
+  );// --------------------------------------------------
 // PAYMENT CALLBACK HANDLER
 // --------------------------------------------------
 
@@ -4855,6 +4856,7 @@ server.listen(
       console.log(
         'WARNING: PAYSTACK_SECRET_KEY is not configured'
       );
+
     }
 
 
@@ -4872,6 +4874,7 @@ server.listen(
       console.log(
         'WARNING: APP_URL is not configured'
       );
+
     }
 
   }
