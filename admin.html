@@ -2,405 +2,403 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crazy Crash Rockets — Admin</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Crazy Crash Rockets - Admin</title>
 
 <style>
 *{
   box-sizing:border-box;
-  -webkit-tap-highlight-color:transparent;
+  margin:0;
+  padding:0;
 }
 
 body{
-  margin:0;
-  background:#05070b;
-  color:#fff;
   font-family:Arial,Helvetica,sans-serif;
-}
-
-header{
-  position:sticky;
-  top:0;
-  z-index:20;
-  background:#090d14;
-  border-bottom:1px solid #202938;
-  padding:16px;
-}
-
-.header-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-}
-
-.logo{
-  font-size:19px;
-  font-weight:800;
-}
-
-.logo span{
-  color:#ffcc00;
-}
-
-.status{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  font-size:12px;
-  color:#9da8b8;
-}
-
-.dot{
-  width:8px;
-  height:8px;
-  border-radius:50%;
-  background:#555;
-}
-
-.dot.online{
-  background:#19e68c;
-  box-shadow:0 0 10px #19e68c;
-}
-
-.container{
-  width:100%;
-  max-width:1100px;
-  margin:auto;
-  padding:16px;
-}
-
-.login{
+  background:#05050a;
+  color:#fff;
   min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
 }
 
-.login-box{
-  width:100%;
-  max-width:420px;
-  background:#0b1018;
-  border:1px solid #202938;
-  border-radius:20px;
-  padding:24px;
-}
-
-.login-box h1{
-  margin:0 0 8px;
-  font-size:24px;
-}
-
-.login-box p{
-  margin:0 0 22px;
-  color:#8e9aac;
-  font-size:14px;
-}
-
-input,
-button{
+button,input{
   font:inherit;
 }
 
-input{
-  width:100%;
-  background:#060a10;
-  border:1px solid #283244;
-  color:#fff;
-  padding:13px;
-  border-radius:11px;
-  outline:none;
-}
-
-input:focus{
-  border-color:#ffcc00;
-}
-
 button{
-  border:0;
-  border-radius:11px;
-  padding:12px 15px;
   cursor:pointer;
-  font-weight:700;
-}
-
-.primary{
-  background:#ffcc00;
-  color:#111;
-}
-
-.secondary{
-  background:#18202d;
-  color:#fff;
-}
-
-.danger{
-  background:#35151b;
-  color:#ff6b7b;
-}
-
-.success{
-  background:#103425;
-  color:#55e69b;
-}
-
-.login button{
-  width:100%;
-  margin-top:12px;
 }
 
 .hidden{
   display:none!important;
 }
 
-.error{
-  color:#ff6878;
-  margin-top:12px;
+/* LOGIN */
+
+#loginPage{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:
+    radial-gradient(circle at top,#24104b 0,#080810 45%,#020204 100%);
+}
+
+.loginBox{
+  width:100%;
+  max-width:420px;
+  background:#101018;
+  border:1px solid #292936;
+  border-radius:22px;
+  padding:28px 22px;
+  box-shadow:0 20px 70px rgba(0,0,0,.6);
+}
+
+.logo{
+  text-align:center;
+  font-size:42px;
+  margin-bottom:8px;
+}
+
+.loginBox h1{
+  text-align:center;
+  font-size:24px;
+  margin-bottom:7px;
+}
+
+.loginBox p{
+  text-align:center;
+  color:#9292a5;
+  font-size:14px;
+  margin-bottom:24px;
+}
+
+.loginBox input{
+  width:100%;
+  background:#08080e;
+  color:#fff;
+  border:1px solid #30303d;
+  padding:15px;
+  border-radius:12px;
+  outline:none;
+  margin-bottom:12px;
+}
+
+.loginBox input:focus{
+  border-color:#8b5cf6;
+}
+
+.loginBtn{
+  width:100%;
+  border:0;
+  border-radius:12px;
+  padding:15px;
+  background:linear-gradient(135deg,#8b5cf6,#6d28d9);
+  color:#fff;
+  font-weight:bold;
+}
+
+.loginError{
+  color:#ff6868;
+  text-align:center;
   font-size:13px;
-}
-
-.message{
   margin-top:12px;
-  padding:11px;
-  border-radius:10px;
-  background:#101722;
-  color:#b9c4d3;
-  font-size:13px;
 }
 
-.dashboard{
-  display:none;
+/* DASHBOARD */
+
+#dashboard{
+  min-height:100vh;
 }
 
-.dashboard.show{
-  display:block;
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:10;
+  background:rgba(5,5,10,.95);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid #22222d;
+  padding:14px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 
-.cards{
+.brand{
+  font-weight:bold;
+  font-size:18px;
+}
+
+.brand span{
+  color:#a855f7;
+}
+
+.status{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-size:12px;
+  color:#8d8d9e;
+}
+
+.dot{
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#555;
+}
+
+.dot.online{
+  background:#22c55e;
+  box-shadow:0 0 10px #22c55e;
+}
+
+.dot.offline{
+  background:#ef4444;
+}
+
+.logout{
+  margin-left:14px;
+  background:#1b1b25;
+  color:#fff;
+  border:1px solid #30303b;
+  padding:8px 11px;
+  border-radius:9px;
+  font-size:12px;
+}
+
+.container{
+  width:100%;
+  max-width:1250px;
+  margin:auto;
+  padding:18px 14px 50px;
+}
+
+.grid{
   display:grid;
   grid-template-columns:repeat(4,1fr);
   gap:12px;
-  margin-bottom:18px;
+  margin-bottom:16px;
 }
 
 .card{
-  background:#0b1018;
-  border:1px solid #202938;
-  border-radius:16px;
-  padding:15px;
+  background:#101018;
+  border:1px solid #252531;
+  border-radius:15px;
+  padding:16px;
 }
 
-.card-title{
-  color:#8793a5;
+.card .label{
+  color:#8d8d9d;
   font-size:12px;
   margin-bottom:8px;
 }
 
-.card-value{
+.card .value{
   font-size:22px;
-  font-weight:800;
+  font-weight:bold;
 }
 
-.card-value.green{
-  color:#35e695;
+.money{
+  color:#22c55e;
 }
 
-.card-value.yellow{
-  color:#ffcc00;
-}
-
-.card-value.red{
-  color:#ff6374;
+.warning{
+  color:#f59e0b;
 }
 
 .section{
-  background:#0b1018;
-  border:1px solid #202938;
-  border-radius:17px;
+  background:#101018;
+  border:1px solid #252531;
+  border-radius:16px;
   margin-bottom:16px;
   overflow:hidden;
 }
 
-.section-head{
+.sectionHead{
   padding:15px;
-  border-bottom:1px solid #202938;
+  border-bottom:1px solid #252531;
   display:flex;
   justify-content:space-between;
   align-items:center;
   gap:10px;
 }
 
-.section-title{
+.sectionHead h2{
   font-size:16px;
-  font-weight:800;
 }
 
-.section-body{
-  padding:15px;
+.refreshBtn{
+  border:1px solid #353542;
+  background:#171720;
+  color:#fff;
+  border-radius:8px;
+  padding:8px 11px;
+  font-size:12px;
 }
 
-.actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
+.sectionBody{
+  padding:14px;
 }
 
-.table-wrap{
+.financeGrid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+
+.financeItem{
+  background:#08080e;
+  border:1px solid #20202a;
+  border-radius:12px;
+  padding:13px;
+}
+
+.financeItem small{
+  display:block;
+  color:#858596;
+  font-size:11px;
+  margin-bottom:6px;
+}
+
+.financeItem strong{
+  font-size:17px;
+}
+
+.tableWrap{
   width:100%;
   overflow-x:auto;
 }
 
 table{
   width:100%;
-  min-width:700px;
+  min-width:650px;
   border-collapse:collapse;
 }
 
-th,
-td{
-  padding:12px 10px;
-  border-bottom:1px solid #1b2430;
+th,td{
   text-align:left;
-  font-size:13px;
+  padding:11px 9px;
+  border-bottom:1px solid #20202a;
+  font-size:12px;
 }
 
 th{
-  color:#8d99aa;
-  font-size:11px;
-  text-transform:uppercase;
+  color:#888899;
+  font-weight:600;
 }
 
 td{
-  color:#dce2ea;
-}
-
-.badge{
-  display:inline-block;
-  padding:5px 8px;
-  border-radius:8px;
-  font-size:11px;
-  font-weight:700;
-}
-
-.badge.green{
-  background:#103425;
-  color:#50e99a;
-}
-
-.badge.yellow{
-  background:#332c0b;
-  color:#ffda3e;
-}
-
-.badge.red{
-  background:#35151b;
-  color:#ff6979;
-}
-
-.badge.blue{
-  background:#10283d;
-  color:#5db7ff;
+  color:#e8e8ef;
 }
 
 .empty{
-  padding:25px;
   text-align:center;
-  color:#7f8a9a;
-}
-
-.finance-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-}
-
-.finance-box{
-  background:#070b11;
-  border:1px solid #1c2633;
-  border-radius:12px;
-  padding:13px;
-}
-
-.finance-label{
-  font-size:11px;
-  color:#7f8a9a;
-}
-
-.finance-value{
-  margin-top:6px;
-  font-size:18px;
-  font-weight:800;
-}
-
-.withdrawal-actions{
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-}
-
-.small{
-  padding:8px 10px;
-  font-size:11px;
-}
-
-.player-tools{
-  display:flex;
-  gap:8px;
-  margin-bottom:12px;
-}
-
-.player-tools input{
-  flex:1;
-}
-
-.notice{
-  background:#101722;
-  border:1px solid #202938;
-  border-radius:12px;
-  padding:12px;
-  color:#aeb9c8;
+  padding:25px;
+  color:#777788;
   font-size:13px;
-  line-height:1.5;
+}
+
+.search{
+  width:100%;
+  max-width:350px;
+  background:#08080e;
+  color:#fff;
+  border:1px solid #30303d;
+  border-radius:9px;
+  padding:10px 12px;
+  outline:none;
+}
+
+.actionBtn{
+  border:0;
+  border-radius:7px;
+  padding:7px 9px;
+  color:#fff;
+  font-size:11px;
+  margin:2px;
+}
+
+.approve{
+  background:#16a34a;
+}
+
+.reject{
+  background:#dc2626;
+}
+
+.verify{
+  background:#2563eb;
+}
+
+.neutral{
+  background:#4b5563;
+}
+
+.message{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  z-index:100;
+  max-width:90%;
+  padding:12px 16px;
+  border-radius:10px;
+  background:#171720;
+  border:1px solid #333341;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+  font-size:13px;
+}
+
+.message.ok{
+  border-color:#16a34a;
+}
+
+.message.error{
+  border-color:#dc2626;
+}
+
+.loading{
+  color:#888899;
+  font-size:13px;
 }
 
 @media(max-width:800px){
-  .cards{
+  .grid{
     grid-template-columns:repeat(2,1fr);
   }
 
-  .finance-grid{
+  .financeGrid{
     grid-template-columns:repeat(2,1fr);
   }
 }
 
-@media(max-width:480px){
-  .container{
-    padding:10px;
-  }
-
-  header{
-    padding:13px 10px;
-  }
-
-  .cards{
-    gap:8px;
-  }
-
-  .card{
-    padding:12px;
-  }
-
-  .card-value{
-    font-size:18px;
-  }
-
-  .finance-grid{
+@media(max-width:500px){
+  .grid{
     grid-template-columns:1fr 1fr;
   }
 
-  button{
-    padding:10px 12px;
+  .financeGrid{
+    grid-template-columns:1fr;
+  }
+
+  .topbar{
+    padding:12px;
+  }
+
+  .brand{
+    font-size:15px;
+  }
+
+  .container{
+    padding:12px 10px 40px;
+  }
+
+  .card{
+    padding:13px;
+  }
+
+  .card .value{
+    font-size:18px;
   }
 }
 </style>
@@ -409,31 +407,28 @@ td{
 <body>
 
 <!-- LOGIN -->
-<div id="loginScreen" class="login">
+<div id="loginPage">
 
-  <div class="login-box">
+  <div class="loginBox">
 
-    <h1>🚀 Crazy Crash Rockets</h1>
+    <div class="logo">🚀</div>
 
-    <p>
-      Secure administrator control panel
-    </p>
+    <h1>Crazy Crash Rockets</h1>
+
+    <p>Administrator Control Panel</p>
 
     <input
       id="adminKey"
       type="password"
-      placeholder="Enter admin key"
+      placeholder="Enter ADMIN_KEY"
       autocomplete="off"
     >
 
-    <button
-      class="primary"
-      onclick="login()"
-    >
-      🔐 ENTER ADMIN
+    <button class="loginBtn" onclick="login()">
+      🔐 LOGIN
     </button>
 
-    <div id="loginError" class="error"></div>
+    <div id="loginError" class="loginError"></div>
 
   </div>
 
@@ -441,397 +436,294 @@ td{
 
 
 <!-- DASHBOARD -->
-<div id="dashboard" class="dashboard">
+<div id="dashboard" class="hidden">
 
-<header>
+  <div class="topbar">
 
-  <div class="header-row">
-
-    <div class="logo">
-      🚀 CRAZY <span>CRASH</span> ROCKETS
+    <div class="brand">
+      🚀 <span>CRAZY CRASH</span> ADMIN
     </div>
 
-    <div class="status">
-      <span id="statusDot" class="dot"></span>
-      <span id="statusText">Offline</span>
-    </div>
+    <div style="display:flex;align-items:center">
 
-  </div>
-
-</header>
-
-
-<div class="container">
-
-  <!-- TOP CARDS -->
-
-  <div class="cards">
-
-    <div class="card">
-      <div class="card-title">👥 PLAYERS</div>
-      <div id="totalPlayers" class="card-value">0</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">🟢 ONLINE</div>
-      <div id="onlinePlayers" class="card-value green">0</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">💰 DEPOSITED</div>
-      <div id="totalDeposited" class="card-value yellow">₦0</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">💸 WITHDRAWN</div>
-      <div id="totalWithdrawn" class="card-value red">₦0</div>
-    </div>
-
-  </div>
-
-
-  <!-- CONTROL -->
-
-  <div class="section">
-
-    <div class="section-head">
-
-      <div class="section-title">
-        ⚙️ Control
+      <div class="status">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText">Disconnected</span>
       </div>
 
-      <button
-        class="secondary small"
-        onclick="refreshAll()"
-      >
-        🔄 Refresh
+      <button class="logout" onclick="logout()">
+        Logout
       </button>
 
     </div>
 
-    <div class="section-body">
-
-      <div class="notice">
-        Admin panel is connected directly to the
-        Crazy Crash Rockets game server.
-        <br><br>
-        Use the sections below to monitor players,
-        deposits and withdrawals.
-      </div>
-
-      <div
-        id="globalMessage"
-        class="message hidden"
-      ></div>
-
-    </div>
-
   </div>
 
 
-  <!-- FINANCE -->
+  <main class="container">
 
-  <div class="section">
+    <!-- MAIN STATS -->
 
-    <div class="section-head">
+    <div class="grid">
 
-      <div class="section-title">
-        💰 Finance
+      <div class="card">
+        <div class="label">👥 PLAYERS</div>
+        <div id="playersCount" class="value">0</div>
+      </div>
+
+      <div class="card">
+        <div class="label">🟢 ONLINE</div>
+        <div id="onlineCount" class="value">0</div>
+      </div>
+
+      <div class="card">
+        <div class="label">💰 TOTAL DEPOSITED</div>
+        <div id="depositedCount" class="value money">₦0</div>
+      </div>
+
+      <div class="card">
+        <div class="label">🏦 TOTAL WITHDRAWN</div>
+        <div id="withdrawnCount" class="value warning">₦0</div>
       </div>
 
     </div>
 
-    <div class="section-body">
 
-      <div class="finance-grid">
+    <!-- FINANCE -->
 
-        <div class="finance-box">
-          <div class="finance-label">
-            TOTAL DEPOSITED
-          </div>
-          <div
-            id="financeDeposited"
-            class="finance-value"
-          >
-            ₦0
-          </div>
-        </div>
+    <section class="section">
 
-        <div class="finance-box">
-          <div class="finance-label">
-            TOTAL WITHDRAWN
-          </div>
-          <div
-            id="financeWithdrawn"
-            class="finance-value"
-          >
-            ₦0
-          </div>
-        </div>
+      <div class="sectionHead">
 
-        <div class="finance-box">
-          <div class="finance-label">
-            PENDING WITHDRAWALS
-          </div>
-          <div
-            id="financePending"
-            class="finance-value"
-          >
-            ₦0
-          </div>
-        </div>
+        <h2>💰 FINANCIAL OVERVIEW</h2>
 
-        <div class="finance-box">
-          <div class="finance-label">
-            DEPOSIT RECORDS
-          </div>
-          <div
-            id="depositCount"
-            class="finance-value"
-          >
-            0
-          </div>
-        </div>
+        <button class="refreshBtn" onclick="loadAll()">
+          🔄 Refresh
+        </button>
 
-        <div class="finance-box">
-          <div class="finance-label">
-            WITHDRAWAL RECORDS
-          </div>
-          <div
-            id="withdrawalCount"
-            class="finance-value"
-          >
-            0
-          </div>
-        </div>
+      </div>
 
-        <div class="finance-box">
-          <div class="finance-label">
-            PLAYER LIABILITY
+      <div class="sectionBody">
+
+        <div class="financeGrid">
+
+          <div class="financeItem">
+            <small>Total Deposits</small>
+            <strong id="financeDeposits">₦0</strong>
           </div>
-          <div
-            id="balanceLiability"
-            class="finance-value"
-          >
-            ₦0
+
+          <div class="financeItem">
+            <small>Total Withdrawals</small>
+            <strong id="financeWithdrawals">₦0</strong>
           </div>
+
+          <div class="financeItem">
+            <small>Pending Withdrawals</small>
+            <strong id="financePending">₦0</strong>
+          </div>
+
+          <div class="financeItem">
+            <small>Deposit Records</small>
+            <strong id="depositRecords">0</strong>
+          </div>
+
+          <div class="financeItem">
+            <small>Withdrawal Records</small>
+            <strong id="withdrawalRecords">0</strong>
+          </div>
+
+          <div class="financeItem">
+            <small>Player Liability</small>
+            <strong id="playerLiability">₦0</strong>
+          </div>
+
         </div>
 
       </div>
 
-    </div>
-
-  </div>
+    </section>
 
 
-  <!-- WITHDRAWALS -->
+    <!-- WITHDRAWALS -->
 
-  <div class="section">
+    <section class="section">
 
-    <div class="section-head">
+      <div class="sectionHead">
 
-      <div class="section-title">
-        💸 Withdrawals
-      </div>
+        <h2>🏦 WITHDRAWALS</h2>
 
-      <button
-        class="secondary small"
-        onclick="loadWithdrawals()"
-      >
-        🔄 Refresh
-      </button>
-
-    </div>
-
-    <div class="section-body">
-
-      <div class="table-wrap">
-
-        <table>
-
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Player</th>
-              <th>Amount</th>
-              <th>Bank</th>
-              <th>Account</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-
-          <tbody id="withdrawalsBody">
-
-            <tr>
-              <td colspan="7">
-                <div class="empty">
-                  Loading withdrawals...
-                </div>
-              </td>
-            </tr>
-
-          </tbody>
-
-        </table>
+        <button class="refreshBtn" onclick="loadWithdrawals()">
+          🔄 Refresh
+        </button>
 
       </div>
 
-    </div>
+      <div class="sectionBody">
 
-  </div>
+        <div id="withdrawalsLoading" class="loading">
+          Loading withdrawals...
+        </div>
 
+        <div class="tableWrap">
 
-  <!-- DEPOSITS -->
+          <table>
 
-  <div class="section">
+            <thead>
 
-    <div class="section-head">
+              <tr>
+                <th>ID</th>
+                <th>PLAYER</th>
+                <th>AMOUNT</th>
+                <th>BANK</th>
+                <th>ACCOUNT</th>
+                <th>STATUS</th>
+                <th>ACTION</th>
+              </tr>
 
-      <div class="section-title">
-        💳 Deposits
-      </div>
+            </thead>
 
-      <button
-        class="secondary small"
-        onclick="loadDeposits()"
-      >
-        🔄 Refresh
-      </button>
+            <tbody id="withdrawalsTable"></tbody>
 
-    </div>
+          </table>
 
-    <div class="section-body">
-
-      <div class="table-wrap">
-
-        <table>
-
-          <thead>
-
-            <tr>
-              <th>Reference</th>
-              <th>Player</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Date</th>
-            </tr>
-
-          </thead>
-
-          <tbody id="depositsBody">
-
-            <tr>
-              <td colspan="5">
-                <div class="empty">
-                  Loading deposits...
-                </div>
-              </td>
-            </tr>
-
-          </tbody>
-
-        </table>
+        </div>
 
       </div>
 
-    </div>
-
-  </div>
+    </section>
 
 
-  <!-- PLAYERS -->
+    <!-- DEPOSITS -->
 
-  <div class="section">
+    <section class="section">
 
-    <div class="section-head">
+      <div class="sectionHead">
 
-      <div class="section-title">
-        👥 Players
+        <h2>💳 DEPOSITS</h2>
+
+        <button class="refreshBtn" onclick="loadDeposits()">
+          🔄 Refresh
+        </button>
+
       </div>
 
-      <button
-        class="secondary small"
-        onclick="loadPlayers()"
-      >
-        🔄 Refresh
-      </button>
+      <div class="sectionBody">
 
-    </div>
+        <div id="depositsLoading" class="loading">
+          Loading deposits...
+        </div>
 
-    <div class="section-body">
+        <div class="tableWrap">
 
-      <div class="player-tools">
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>ID</th>
+                <th>PLAYER</th>
+                <th>AMOUNT</th>
+                <th>REFERENCE</th>
+                <th>STATUS</th>
+                <th>DATE</th>
+              </tr>
+
+            </thead>
+
+            <tbody id="depositsTable"></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- PLAYERS -->
+
+    <section class="section">
+
+      <div class="sectionHead">
+
+        <h2>👥 PLAYERS</h2>
 
         <input
           id="playerSearch"
+          class="search"
           placeholder="Search player..."
-          oninput="renderPlayers()"
+          oninput="filterPlayers()"
         >
 
       </div>
 
-      <div class="table-wrap">
+      <div class="sectionBody">
 
-        <table>
+        <div class="tableWrap">
 
-          <thead>
+          <table>
 
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Telegram</th>
-              <th>Balance</th>
-              <th>Rounds</th>
-              <th>Wins</th>
-              <th>Online</th>
-            </tr>
+            <thead>
 
-          </thead>
+              <tr>
+                <th>ID</th>
+                <th>NAME</th>
+                <th>BALANCE</th>
+                <th>BET</th>
+                <th>CREATED</th>
+              </tr>
 
-          <tbody id="playersBody">
+            </thead>
 
-            <tr>
-              <td colspan="7">
-                <div class="empty">
-                  Loading players...
-                </div>
-              </td>
-            </tr>
+            <tbody id="playersTable"></tbody>
 
-          </tbody>
+          </table>
 
-        </table>
+        </div>
 
       </div>
 
-    </div>
+    </section>
 
-  </div>
-
-
-</div>
+  </main>
 
 </div>
+
+
+<div id="message" class="message hidden"></div>
 
 
 <script>
+
+/*
+========================================================
+CRAZY CRASH ROCKETS ADMIN CONNECTION
+========================================================
+*/
+
+const GAME_SERVER =
+  "https://rocket-crash-ppok.onrender.com";
 
 let KEY = "";
 let playersData = [];
 
 
+/*
+========================================================
+FORMAT
+========================================================
+*/
+
 function money(value){
+
   const n = Number(value || 0);
 
-  return "₦" +
-    n.toLocaleString(
-      "en-NG",
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }
-    );
+  return "₦" + n.toLocaleString("en-NG",{
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
+  });
+
 }
 
 
@@ -843,211 +735,204 @@ function escapeHtml(value){
     .replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;")
     .replace(/'/g,"&#039;");
+
 }
 
 
-function setMessage(text){
+/*
+========================================================
+MESSAGE
+========================================================
+*/
 
-  const box =
-    document.getElementById(
-      "globalMessage"
-    );
+function showMessage(text,type="ok"){
+
+  const box = document.getElementById("message");
 
   box.textContent = text;
 
-  box.classList.remove(
-    "hidden"
-  );
+  box.className = "message " + type;
 
-  clearTimeout(
-    window.messageTimer
-  );
+  setTimeout(()=>{
+    box.classList.add("hidden");
+  },3500);
 
-  window.messageTimer =
-    setTimeout(
-      () =>
-        box.classList.add(
-          "hidden"
-        ),
-      5000
-    );
 }
 
 
-function setOnline(value){
+/*
+========================================================
+API CONNECTION
+========================================================
+*/
 
-  const dot =
-    document.getElementById(
-      "statusDot"
-    );
+async function api(endpoint,options={}){
 
-  const text =
-    document.getElementById(
-      "statusText"
-    );
+  const opts = {
+    ...options,
+    headers:{
+      "Content-Type":"application/json",
+      ...(options.headers || {})
+    }
+  };
 
-  if(value){
 
-    dot.classList.add(
-      "online"
-    );
+  /*
+   IMPORTANT:
+   Crazy Crash server expects:
+   {
+      key: ADMIN_KEY
+   }
 
-    text.textContent =
-      "Connected";
+   It does NOT authenticate using only
+   X-Admin-Key.
+  */
 
-  }else{
+  if((opts.method || "GET").toUpperCase() === "POST"){
 
-    dot.classList.remove(
-      "online"
-    );
+    let body = {};
 
-    text.textContent =
-      "Offline";
+    try{
+
+      if(opts.body){
+        body = JSON.parse(opts.body);
+      }
+
+    }catch(e){
+
+      body = {};
+
+    }
+
+    body.key = KEY;
+
+    opts.body = JSON.stringify(body);
+
   }
-}
 
-
-async function api(
-  endpoint,
-  options = {}
-){
-
-  const headers =
-    Object.assign(
-      {
-        "Content-Type":
-          "application/json",
-        "X-Admin-Key":
-          KEY
-      },
-      options.headers || {}
-    );
 
   const response =
-    await fetch(
-      endpoint,
-      Object.assign(
-        {},
-        options,
-        {
-          headers
-        }
-      )
-    );
+    await fetch(GAME_SERVER + endpoint,opts);
 
-  let data;
+
+  let data = {};
 
   try{
-    data =
-      await response.json();
-  }catch{
-    throw new Error(
-      "Server returned an invalid response"
-    );
+    data = await response.json();
+  }catch(e){
+    data = {};
   }
 
-  if(
-    response.status === 401
-  ){
 
-    logout();
-
-    throw new Error(
-      "Admin key is not accepted"
-    );
-  }
-
-  if(
-    !response.ok ||
-    data.ok === false
-  ){
+  if(!response.ok){
 
     throw new Error(
       data.error ||
-      "Request failed"
+      "Server returned HTTP " + response.status
     );
+
   }
 
+
   return data;
+
 }
 
+
+/*
+========================================================
+LOGIN
+========================================================
+*/
 
 async function login(){
 
   const input =
-    document.getElementById(
-      "adminKey"
-    );
+    document.getElementById("adminKey");
 
   const error =
-    document.getElementById(
-      "loginError"
-    );
+    document.getElementById("loginError");
 
   const key =
     input.value.trim();
 
+
   if(!key){
 
     error.textContent =
-      "Enter your admin key.";
+      "Enter the ADMIN_KEY.";
 
     return;
+
   }
+
+
+  error.textContent =
+    "Connecting to server...";
+
 
   KEY = key;
 
+
   try{
 
-    await api(
-      "/admin/api/finance",
-      {
-        method:
-          "POST",
-        body:
-          "{}"
-      }
-    );
+    /*
+    This is the real Crazy Crash admin endpoint.
+    */
+
+    await api("/admin/api/finance",{
+      method:"POST",
+      body:JSON.stringify({})
+    });
+
 
     localStorage.setItem(
       "crazyCrashAdminKey",
       KEY
     );
 
-    document
-      .getElementById(
-        "loginScreen"
-      )
-      .classList.add(
-        "hidden"
-      );
 
     document
-      .getElementById(
-        "dashboard"
-      )
-      .classList.add(
-        "show"
-      );
+      .getElementById("loginPage")
+      .classList.add("hidden");
 
-    error.textContent = "";
+    document
+      .getElementById("dashboard")
+      .classList.remove("hidden");
+
 
     setOnline(true);
 
-    await refreshAll();
+    error.textContent = "";
 
-  }catch(e){
+
+    await loadAll();
+
+
+    showMessage(
+      "✅ Admin connected successfully."
+    );
+
+
+  }catch(err){
 
     KEY = "";
 
-    error.textContent =
-      e.message ||
-      "Unable to connect to admin server.";
-
     setOnline(false);
+
+    error.textContent =
+      "❌ " + err.message;
+
   }
+
 }
 
+
+/*
+========================================================
+LOGOUT
+========================================================
+*/
 
 function logout(){
 
@@ -1057,542 +942,599 @@ function logout(){
     "crazyCrashAdminKey"
   );
 
-  document
-    .getElementById(
-      "dashboard"
-    )
-    .classList.remove(
-      "show"
-    );
 
   document
-    .getElementById(
-      "loginScreen"
-    )
-    .classList.remove(
-      "hidden"
-    );
+    .getElementById("dashboard")
+    .classList.add("hidden");
+
+
+  document
+    .getElementById("loginPage")
+    .classList.remove("hidden");
+
+
+  document
+    .getElementById("adminKey")
+    .value = "";
+
 
   setOnline(false);
+
 }
 
+
+/*
+========================================================
+SERVER STATUS
+========================================================
+*/
+
+function setOnline(online){
+
+  const dot =
+    document.getElementById("statusDot");
+
+  const text =
+    document.getElementById("statusText");
+
+
+  if(online){
+
+    dot.className = "dot online";
+
+    text.textContent = "Connected";
+
+  }else{
+
+    dot.className = "dot offline";
+
+    text.textContent = "Disconnected";
+
+  }
+
+}
+
+
+/*
+========================================================
+FINANCE
+========================================================
+*/
 
 async function loadFinance(){
 
   const data =
-    await api(
-      "/admin/api/finance",
-      {
-        method:
-          "POST",
-        body:
-          "{}"
-      }
+    await api("/admin/api/finance",{
+      method:"POST",
+      body:JSON.stringify({})
+    });
+
+
+  const f =
+    data.finance || data;
+
+
+  document.getElementById(
+    "financeDeposits"
+  ).textContent =
+    money(
+      f.totalDeposited ??
+      f.deposited ??
+      0
     );
 
-  document
-    .getElementById(
-      "totalDeposited"
-    )
-    .textContent =
-      money(
-        data.totalDeposited
-      );
 
-  document
-    .getElementById(
-      "totalWithdrawn"
-    )
-    .textContent =
-      money(
-        data.totalWithdrawn
-      );
+  document.getElementById(
+    "financeWithdrawals"
+  ).textContent =
+    money(
+      f.totalWithdrawn ??
+      f.withdrawn ??
+      0
+    );
 
-  document
-    .getElementById(
-      "financeDeposited"
-    )
-    .textContent =
-      money(
-        data.totalDeposited
-      );
 
-  document
-    .getElementById(
-      "financeWithdrawn"
-    )
-    .textContent =
-      money(
-        data.totalWithdrawn
-      );
+  document.getElementById(
+    "financePending"
+  ).textContent =
+    money(
+      f.pendingWithdrawals ??
+      0
+    );
 
-  document
-    .getElementById(
-      "financePending"
-    )
-    .textContent =
-      money(
-        data.pendingWithdrawals
-      );
 
-  document
-    .getElementById(
-      "depositCount"
-    )
-    .textContent =
-      data.depositsCount || 0;
+  document.getElementById(
+    "depositRecords"
+  ).textContent =
+    Number(
+      f.depositRecords ??
+      0
+    ).toLocaleString();
 
-  document
-    .getElementById(
-      "withdrawalCount"
-    )
-    .textContent =
-      data.withdrawalsCount || 0;
 
-  document
-    .getElementById(
-      "balanceLiability"
-    )
-    .textContent =
-      money(
-        data.balanceLiability
-      );
+  document.getElementById(
+    "withdrawalRecords"
+  ).textContent =
+    Number(
+      f.withdrawalRecords ??
+      0
+    ).toLocaleString();
+
+
+  document.getElementById(
+    "playerLiability"
+  ).textContent =
+    money(
+      f.playerLiability ??
+      0
+    );
+
+
+  document.getElementById(
+    "depositedCount"
+  ).textContent =
+    money(
+      f.totalDeposited ??
+      f.deposited ??
+      0
+    );
+
+
+  document.getElementById(
+    "withdrawnCount"
+  ).textContent =
+    money(
+      f.totalWithdrawn ??
+      f.withdrawn ??
+      0
+    );
+
 }
 
 
-async function loadPlayers(){
+/*
+========================================================
+STATE / PLAYERS
+========================================================
+*/
+
+async function loadState(){
 
   const data =
-    await api(
-      "/admin/api/state",
-      {
-        method:
-          "POST",
-        body:
-          "{}"
-      }
-    );
+    await api("/admin/api/state",{
+      method:"POST",
+      body:JSON.stringify({})
+    });
+
+
+  const players =
+    data.players ||
+    data.users ||
+    [];
+
 
   playersData =
-    Array.isArray(
-      data.players
-    )
-      ? data.players
+    Array.isArray(players)
+      ? players
       : [];
 
-  document
-    .getElementById(
-      "totalPlayers"
-    )
-    .textContent =
-      data.total ||
-      playersData.length;
 
-  document
-    .getElementById(
-      "onlinePlayers"
-    )
-    .textContent =
-      data.online ||
-      playersData.filter(
-        p => p.online
-      ).length;
+  document.getElementById(
+    "playersCount"
+  ).textContent =
+    playersData.length.toLocaleString();
 
-  renderPlayers();
+
+  const online =
+    data.online ??
+    data.onlinePlayers ??
+    0;
+
+
+  document.getElementById(
+    "onlineCount"
+  ).textContent =
+    Number(online).toLocaleString();
+
+
+  renderPlayers(playersData);
+
 }
 
 
-function renderPlayers(){
+/*
+========================================================
+PLAYERS TABLE
+========================================================
+*/
 
-  const body =
+function renderPlayers(players){
+
+  const table =
     document.getElementById(
-      "playersBody"
+      "playersTable"
     );
 
-  const search =
-    String(
-      document.getElementById(
-        "playerSearch"
-      ).value || ""
-    )
+
+  if(!players.length){
+
+    table.innerHTML =
+      '<tr><td colspan="5" class="empty">No players found.</td></tr>';
+
+    return;
+
+  }
+
+
+  table.innerHTML =
+    players.map((p,index)=>{
+
+      const id =
+        p.id ??
+        p.userId ??
+        p.telegramId ??
+        index + 1;
+
+
+      const name =
+        p.name ??
+        p.username ??
+        "Player";
+
+
+      const balance =
+        p.bal ??
+        p.balance ??
+        0;
+
+
+      const bet =
+        p.bet ??
+        p.currentBet ??
+        0;
+
+
+      const created =
+        p.createdAt ??
+        p.created ??
+        "";
+
+
+      return `
+        <tr>
+
+          <td>${escapeHtml(id)}</td>
+
+          <td>${escapeHtml(name)}</td>
+
+          <td>${money(balance)}</td>
+
+          <td>${money(bet)}</td>
+
+          <td>${escapeHtml(created)}</td>
+
+        </tr>
+      `;
+
+    }).join("");
+
+}
+
+
+function filterPlayers(){
+
+  const q =
+    document
+      .getElementById("playerSearch")
+      .value
       .toLowerCase()
       .trim();
 
-  const rows =
-    playersData.filter(
-      p => {
 
-        if(!search)
-          return true;
+  if(!q){
 
-        return (
-          String(
-            p.name || ""
-          )
-            .toLowerCase()
-            .includes(search)
-
-          ||
-
-          String(
-            p.id || ""
-          )
-            .toLowerCase()
-            .includes(search)
-        );
-      }
-    );
-
-  if(!rows.length){
-
-    body.innerHTML =
-      `
-      <tr>
-        <td colspan="7">
-          <div class="empty">
-            No players found.
-          </div>
-        </td>
-      </tr>
-      `;
+    renderPlayers(playersData);
 
     return;
+
   }
 
 
-  body.innerHTML =
-    rows.map(
-      p => {
+  const filtered =
+    playersData.filter(p=>{
 
-        const online =
-          p.online;
+      const text =
+        JSON.stringify(p)
+          .toLowerCase();
 
-        const tg =
-          p.tg &&
-          (
-            p.tg.username
-              ? "@" +
-                p.tg.username
-              : p.tg.name ||
-                "Telegram"
-          );
+      return text.includes(q);
 
-        return `
-          <tr>
+    });
 
-            <td>
-              ${escapeHtml(p.id)}
-            </td>
 
-            <td>
-              ${escapeHtml(p.name || "Player")}
-            </td>
+  renderPlayers(filtered);
 
-            <td>
-              ${escapeHtml(tg || "-")}
-            </td>
-
-            <td>
-              ${money(p.bal)}
-            </td>
-
-            <td>
-              ${Number(p.rounds || 0)}
-            </td>
-
-            <td>
-              ${Number(p.wins || 0)}
-            </td>
-
-            <td>
-              ${
-                online
-                  ? '<span class="badge green">ONLINE</span>'
-                  : '<span class="badge red">OFFLINE</span>'
-              }
-            </td>
-
-          </tr>
-        `;
-      }
-    ).join("");
 }
 
+
+/*
+========================================================
+DEPOSITS
+========================================================
+*/
 
 async function loadDeposits(){
 
-  const data =
-    await api(
-      "/admin/api/deposits",
-      {
-        method:
-          "POST",
-        body:
-          "{}"
-      }
-    );
-
-  const deposits =
-    Array.isArray(
-      data.deposits
-    )
-      ? data.deposits
-      : [];
-
-  const body =
+  const loading =
     document.getElementById(
-      "depositsBody"
+      "depositsLoading"
     );
 
-  if(!deposits.length){
-
-    body.innerHTML =
-      `
-      <tr>
-        <td colspan="5">
-          <div class="empty">
-            No deposits found.
-          </div>
-        </td>
-      </tr>
-      `;
-
-    return;
-  }
+  const table =
+    document.getElementById(
+      "depositsTable"
+    );
 
 
-  body.innerHTML =
-    deposits.map(
-      d => {
+  loading.classList.remove("hidden");
 
-        let statusClass =
-          "yellow";
 
-        if(
-          d.status ===
-          "success"
-        )
-          statusClass =
-            "green";
+  try{
 
-        if(
-          d.status ===
-          "failed"
-        )
-          statusClass =
-            "red";
+    const data =
+      await api("/admin/api/deposits",{
+        method:"POST",
+        body:JSON.stringify({})
+      });
+
+
+    const deposits =
+      data.deposits ||
+      data.records ||
+      [];
+
+
+    loading.classList.add("hidden");
+
+
+    if(!Array.isArray(deposits) || !deposits.length){
+
+      table.innerHTML =
+        '<tr><td colspan="6" class="empty">No deposits found.</td></tr>';
+
+      return;
+
+    }
+
+
+    table.innerHTML =
+      deposits.map((d,index)=>{
 
         return `
           <tr>
 
-            <td>
-              ${escapeHtml(d.reference || d.id || "-")}
-            </td>
+            <td>${escapeHtml(
+              d.id ??
+              d.reference ??
+              index+1
+            )}</td>
 
-            <td>
-              ${escapeHtml(d.playerId || "-")}
-            </td>
+            <td>${escapeHtml(
+              d.playerId ??
+              d.userId ??
+              d.name ??
+              "-"
+            )}</td>
 
-            <td>
-              ${money(d.amount)}
-            </td>
+            <td>${money(
+              d.amount ??
+              0
+            )}</td>
 
-            <td>
-              <span class="badge ${statusClass}">
-                ${escapeHtml(d.status || "unknown")}
-              </span>
-            </td>
+            <td>${escapeHtml(
+              d.reference ??
+              "-"
+            )}</td>
 
-            <td>
-              ${
-                d.createdAt
-                  ? new Date(d.createdAt).toLocaleString()
-                  : "-"
-              }
-            </td>
+            <td>${escapeHtml(
+              d.status ??
+              "-"
+            )}</td>
+
+            <td>${escapeHtml(
+              d.createdAt ??
+              d.date ??
+              "-"
+            )}</td>
 
           </tr>
         `;
-      }
-    ).join("");
+
+      }).join("");
+
+
+  }catch(err){
+
+    loading.textContent =
+      "❌ " + err.message;
+
+    throw err;
+
+  }
+
 }
 
+
+/*
+========================================================
+WITHDRAWALS
+========================================================
+*/
 
 async function loadWithdrawals(){
 
-  const data =
-    await api(
-      "/admin/api/withdrawals",
-      {
-        method:
-          "POST",
-        body:
-          "{}"
-      }
-    );
-
-  const withdrawals =
-    Array.isArray(
-      data.withdrawals
-    )
-      ? data.withdrawals
-      : [];
-
-  const body =
+  const loading =
     document.getElementById(
-      "withdrawalsBody"
+      "withdrawalsLoading"
+    );
+
+  const table =
+    document.getElementById(
+      "withdrawalsTable"
     );
 
 
-  if(!withdrawals.length){
-
-    body.innerHTML =
-      `
-      <tr>
-        <td colspan="7">
-          <div class="empty">
-            No withdrawals found.
-          </div>
-        </td>
-      </tr>
-      `;
-
-    return;
-  }
+  loading.classList.remove("hidden");
 
 
-  body.innerHTML =
-    withdrawals.map(
-      w => {
+  try{
 
-        let statusClass =
-          "yellow";
-
-        if(
-          w.status ===
-            "paid" ||
-          w.status ===
-            "processing"
-        )
-          statusClass =
-            "green";
-
-        if(
-          w.status ===
-            "failed" ||
-          w.status ===
-            "rejected"
-        )
-          statusClass =
-            "red";
+    const data =
+      await api("/admin/api/withdrawals",{
+        method:"POST",
+        body:JSON.stringify({})
+      });
 
 
-        let actions = "-";
+    const withdrawals =
+      data.withdrawals ||
+      data.records ||
+      [];
 
 
-        if(
-          w.status ===
-          "pending"
-        ){
-
-          actions =
-            `
-            <div class="withdrawal-actions">
-
-              <button
-                class="success small"
-                onclick="approveWithdrawal('${escapeJs(w.id)}')"
-              >
-                ✅ Approve
-              </button>
-
-              <button
-                class="danger small"
-                onclick="rejectWithdrawal('${escapeJs(w.id)}')"
-              >
-                ❌ Reject
-              </button>
-
-            </div>
-            `;
-        }
+    loading.classList.add("hidden");
 
 
-        if(
-          w.status ===
-          "processing"
-        ){
+    if(!Array.isArray(withdrawals) || !withdrawals.length){
 
-          actions =
-            `
+      table.innerHTML =
+        '<tr><td colspan="7" class="empty">No withdrawals found.</td></tr>';
+
+      return;
+
+    }
+
+
+    table.innerHTML =
+      withdrawals.map((w,index)=>{
+
+        const status =
+          String(
+            w.status || ""
+          ).toLowerCase();
+
+
+        let action = "";
+
+
+        if(status === "pending"){
+
+          action = `
             <button
-              class="secondary small"
-              onclick="verifyTransfer('${escapeJs(w.id)}')"
+              class="actionBtn approve"
+              onclick="approveWithdrawal('${escapeHtml(w.id)}')"
             >
-              🔎 Verify
+              ✓ Approve
             </button>
-            `;
+
+            <button
+              class="actionBtn reject"
+              onclick="rejectWithdrawal('${escapeHtml(w.id)}')"
+            >
+              ✕ Reject
+            </button>
+          `;
+
+        }else if(status === "processing"){
+
+          action = `
+            <button
+              class="actionBtn verify"
+              onclick="verifyTransfer('${escapeHtml(w.id)}')"
+            >
+              ✓ Verify
+            </button>
+          `;
+
+        }else{
+
+          action =
+            `<span style="color:#777">${escapeHtml(status || "-")}</span>`;
+
         }
 
 
         return `
           <tr>
 
-            <td>
-              ${escapeHtml(w.id || "-")}
-            </td>
+            <td>${escapeHtml(
+              w.id ??
+              index+1
+            )}</td>
 
-            <td>
-              ${escapeHtml(w.playerId || "-")}
-            </td>
+            <td>${escapeHtml(
+              w.playerId ??
+              w.userId ??
+              w.name ??
+              "-"
+            )}</td>
 
-            <td>
-              <strong>
-                ${money(w.amount)}
-              </strong>
-            </td>
+            <td>${money(
+              w.amount ??
+              0
+            )}</td>
 
-            <td>
-              ${escapeHtml(w.bankName || "-")}
-            </td>
+            <td>${escapeHtml(
+              w.bankName ??
+              w.bank ??
+              "-"
+            )}</td>
 
-            <td>
-              ${escapeHtml(w.accountNumber || "-")}
-            </td>
+            <td>${escapeHtml(
+              w.accountNumber ??
+              w.account ??
+              "-"
+            )}</td>
 
-            <td>
-              <span class="badge ${statusClass}">
-                ${escapeHtml(w.status || "unknown")}
-              </span>
-            </td>
+            <td>${escapeHtml(
+              w.status ??
+              "-"
+            )}</td>
 
-            <td>
-              ${actions}
-            </td>
+            <td>${action}</td>
 
           </tr>
         `;
-      }
-    ).join("");
+
+      }).join("");
+
+
+  }catch(err){
+
+    loading.textContent =
+      "❌ " + err.message;
+
+    throw err;
+
+  }
+
 }
 
 
-function escapeJs(value){
-
-  return String(value || "")
-    .replace(/\\/g,"\\\\")
-    .replace(/'/g,"\\'");
-}
-
+/*
+========================================================
+APPROVE WITHDRAWAL
+========================================================
+*/
 
 async function approveWithdrawal(id){
 
-  if(
-    !confirm(
-      "Approve this withdrawal and start the Paystack payout?"
-    )
-  )
+  if(!confirm(
+    "Approve this withdrawal?"
+  )){
     return;
+  }
+
 
   try{
 
@@ -1600,88 +1542,127 @@ async function approveWithdrawal(id){
       await api(
         "/admin/api/approve-withdrawal",
         {
-          method:
-            "POST",
-          body:
-            JSON.stringify({
-              id
-            })
+          method:"POST",
+          body:JSON.stringify({
+            id:id
+          })
         }
       );
 
-    if(
-      data.refunded
-    ){
 
-      setMessage(
-        "⚠️ Paystack payout failed. The player's money was refunded: " +
-        money(data.refundAmount)
+    if(data.ok){
+
+      showMessage(
+        "✅ Withdrawal approved."
       );
 
     }else{
 
-      setMessage(
-        "✅ Withdrawal payout started."
+      showMessage(
+        data.error ||
+        "Withdrawal approval failed.",
+        "error"
       );
+
     }
 
-    await refreshAll();
 
-  }catch(e){
+    await loadAll();
 
-    setMessage(
-      "❌ " +
-      e.message
+
+  }catch(err){
+
+    showMessage(
+      "❌ " + err.message,
+      "error"
     );
+
   }
+
 }
 
+
+/*
+========================================================
+REJECT WITHDRAWAL
+========================================================
+*/
 
 async function rejectWithdrawal(id){
 
   const reason =
     prompt(
-      "Reason for rejecting this withdrawal:",
-      "Rejected by admin"
+      "Enter rejection reason:",
+      "Withdrawal rejected by admin"
     );
 
-  if(
-    reason === null
-  )
+
+  if(reason === null){
     return;
+  }
+
 
   try{
 
-    await api(
-      "/admin/api/reject-withdrawal",
-      {
-        method:
-          "POST",
-        body:
-          JSON.stringify({
-            id,
-            reason
+    const data =
+      await api(
+        "/admin/api/reject-withdrawal",
+        {
+          method:"POST",
+          body:JSON.stringify({
+            id:id,
+            reason:reason
           })
-      }
+        }
+      );
+
+
+    if(data.ok){
+
+      showMessage(
+        "✅ Withdrawal rejected."
+      );
+
+    }else{
+
+      showMessage(
+        data.error ||
+        "Rejection failed.",
+        "error"
+      );
+
+    }
+
+
+    await loadAll();
+
+
+  }catch(err){
+
+    showMessage(
+      "❌ " + err.message,
+      "error"
     );
 
-    setMessage(
-      "✅ Withdrawal rejected and balance restored."
-    );
-
-    await refreshAll();
-
-  }catch(e){
-
-    setMessage(
-      "❌ " +
-      e.message
-    );
   }
+
 }
 
 
+/*
+========================================================
+VERIFY TRANSFER
+========================================================
+*/
+
 async function verifyTransfer(id){
+
+  if(!confirm(
+    "Verify this Paystack transfer?"
+  )){
+    return;
+  }
+
 
   try{
 
@@ -1689,105 +1670,164 @@ async function verifyTransfer(id){
       await api(
         "/admin/api/verify-transfer",
         {
-          method:
-            "POST",
-          body:
-            JSON.stringify({
-              id
-            })
+          method:"POST",
+          body:JSON.stringify({
+            id:id
+          })
         }
       );
 
-    setMessage(
-      "🔎 Transfer status: " +
-      (
-        data.status ||
-        data.withdrawal?.status ||
-        "unknown"
-      )
+
+    if(data.ok){
+
+      showMessage(
+        "✅ Transfer verified."
+      );
+
+    }else{
+
+      showMessage(
+        data.error ||
+        "Transfer verification failed.",
+        "error"
+      );
+
+    }
+
+
+    await loadAll();
+
+
+  }catch(err){
+
+    showMessage(
+      "❌ " + err.message,
+      "error"
     );
 
-    await refreshAll();
-
-  }catch(e){
-
-    setMessage(
-      "❌ " +
-      e.message
-    );
   }
+
 }
 
 
-async function refreshAll(){
+/*
+========================================================
+LOAD EVERYTHING
+========================================================
+*/
+
+async function loadAll(){
 
   try{
 
-    await Promise.all([
-      loadFinance(),
-      loadPlayers(),
-      loadDeposits(),
-      loadWithdrawals()
-    ]);
-
     setOnline(true);
 
-  }catch(e){
+    await loadFinance();
+
+    await loadState();
+
+    await loadDeposits();
+
+    await loadWithdrawals();
+
+
+  }catch(err){
+
+    console.error(err);
 
     setOnline(false);
 
-    setMessage(
-      "❌ " +
-      e.message
+    showMessage(
+      "❌ Admin server connection failed: " +
+      err.message,
+      "error"
     );
+
   }
+
 }
 
 
-document
-  .getElementById(
-    "adminKey"
-  )
-  .addEventListener(
-    "keydown",
-    e => {
-
-      if(
-        e.key ===
-        "Enter"
-      ){
-
-        login();
-      }
-
-    }
-  );
-
+/*
+========================================================
+AUTO LOGIN
+========================================================
+*/
 
 window.addEventListener(
   "load",
-  () => {
+  async ()=>{
 
     const saved =
       localStorage.getItem(
         "crazyCrashAdminKey"
       );
 
-    if(saved){
+
+    if(!saved){
+      return;
+    }
+
+
+    KEY = saved;
+
+
+    try{
+
+      await api(
+        "/admin/api/finance",
+        {
+          method:"POST",
+          body:JSON.stringify({})
+        }
+      );
+
 
       document
-        .getElementById(
-          "adminKey"
-        )
-        .value =
-        saved;
+        .getElementById("loginPage")
+        .classList.add("hidden");
 
-      login();
+
+      document
+        .getElementById("dashboard")
+        .classList.remove("hidden");
+
+
+      setOnline(true);
+
+      await loadAll();
+
+
+    }catch(err){
+
+      KEY = "";
+
+      localStorage.removeItem(
+        "crazyCrashAdminKey"
+      );
+
+      setOnline(false);
 
     }
 
+  });
+
+
+/*
+========================================================
+AUTO REFRESH
+========================================================
+*/
+
+setInterval(()=>{
+
+  if(KEY){
+
+    loadAll().catch(()=>{});
+
   }
-);
+
+},15000);
 
 </script>
 
