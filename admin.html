@@ -844,9 +844,11 @@ td{
 
                 <th>BALANCE</th>
 
-                <th>BET</th>
+                <th>DEPOSITS</th>
 
-                <th>CREATED</th>
+                <th>WITHDRAWN</th>
+
+                <th>JOINED</th>
 
               </tr>
 
@@ -921,6 +923,30 @@ function escapeHtml(value){
     .replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;")
     .replace(/'/g,"&#039;");
+
+}
+
+
+function formatDate(value){
+
+  const n = Number(value);
+
+  if(!value || Number.isNaN(n)){
+
+    return "-";
+
+  }
+
+  try{
+
+    return new Date(n)
+      .toLocaleString();
+
+  }catch(e){
+
+    return "-";
+
+  }
 
 }
 
@@ -1043,6 +1069,16 @@ async function api(
       data.error ||
       "Server returned HTTP " +
       response.status
+    );
+
+  }
+
+
+  if(data.ok === false){
+
+    throw new Error(
+      data.error ||
+      "Request failed"
     );
 
   }
@@ -1274,28 +1310,13 @@ async function loadFinance(){
     money(pending);
 
 
-  document.getElementById(
-    "depositRecords"
-  ).textContent =
-    Number(
-      f.depositRecords ?? 0
-    ).toLocaleString();
-
-
-  document.getElementById(
-    "withdrawalRecords"
-  ).textContent =
-    Number(
-      f.withdrawalRecords ?? 0
-    ).toLocaleString();
-
-
-  document.getElementById(
-    "playerLiability"
-  ).textContent =
-    money(
-      f.playerLiability ?? 0
-    );
+  /*
+    FIX: the server's /admin/api/finance action does not return
+    depositRecords / withdrawalRecords / playerLiability. Those come
+    from the deposits/withdrawals/players lists instead, so we fill
+    them in after those load (see loadAll / loadState / loadDeposits /
+    loadWithdrawals below). Leave finance-only fields here.
+  */
 
 
   document.getElementById(
@@ -1314,24 +1335,39 @@ async function loadFinance(){
 
 /* =====================================================
    STATE / PLAYERS
+
+   FIX: the server has no "/admin/api/state" action - it was
+   returning "Unknown admin action" every time, which is why the
+   Players count always showed 0. The real actions are
+   "/admin/api/stats" (counts) and "/admin/api/players" (the list).
 ===================================================== */
 
 async function loadState(){
 
-  const data =
-    await api(
-      "/admin/api/state",
-      {
-        method:"POST",
-        body:JSON.stringify({})
-      }
-    );
+  const [statsData, playersRes] =
+    await Promise.all([
+
+      api(
+        "/admin/api/stats",
+        {
+          method:"POST",
+          body:JSON.stringify({})
+        }
+      ),
+
+      api(
+        "/admin/api/players",
+        {
+          method:"POST",
+          body:JSON.stringify({})
+        }
+      )
+
+    ]);
 
 
   const players =
-    data.players ||
-    data.users ||
-    [];
+    playersRes.players || [];
 
 
   playersData =
@@ -1343,21 +1379,38 @@ async function loadState(){
   document.getElementById(
     "playersCount"
   ).textContent =
-    playersData.length
-      .toLocaleString();
-
-
-  const online =
-    data.online ??
-    data.onlinePlayers ??
-    0;
+    Number(
+      statsData.players ??
+      playersData.length
+    ).toLocaleString();
 
 
   document.getElementById(
     "onlineCount"
   ).textContent =
-    Number(online)
-      .toLocaleString();
+    Number(
+      statsData.online ?? 0
+    ).toLocaleString();
+
+
+  /*
+    Player liability = sum of every player's current wallet
+    balance. The server doesn't compute this for us, so we do it
+    here from the players list we already have.
+  */
+
+  const liability =
+    playersData.reduce(
+      (sum, p) =>
+        sum + Number(p.bal || 0),
+      0
+    );
+
+
+  document.getElementById(
+    "playerLiability"
+  ).textContent =
+    money(liability);
 
 
   renderPlayers(
@@ -1386,7 +1439,7 @@ function renderPlayers(
     table.innerHTML = `
       <tr>
         <td
-          colspan="5"
+          colspan="6"
           class="empty"
         >
           No players found.
@@ -1404,10 +1457,18 @@ function renderPlayers(
       (p,index)=>{
 
         const id =
+          p.token ??
           p.id ??
           p.userId ??
           p.telegramId ??
           index + 1;
+
+
+        const shortId =
+          typeof id === "string" &&
+          id.length > 10
+            ? id.slice(0,10) + "..."
+            : id;
 
 
         const name =
@@ -1422,15 +1483,20 @@ function renderPlayers(
           0;
 
 
-        const bet =
-          p.bet ??
-          p.currentBet ??
+        const deposits =
+          p.deposits ??
           0;
 
 
-        const created =
+        const withdrawn =
+          p.withdrawn ??
+          0;
+
+
+        const joined =
+          p.joined ??
+          p.first ??
           p.createdAt ??
-          p.created ??
           "";
 
 
@@ -1438,7 +1504,7 @@ function renderPlayers(
           <tr>
 
             <td>
-              ${escapeHtml(id)}
+              ${escapeHtml(shortId)}
             </td>
 
             <td>
@@ -1450,11 +1516,15 @@ function renderPlayers(
             </td>
 
             <td>
-              ${money(bet)}
+              ${money(deposits)}
             </td>
 
             <td>
-              ${escapeHtml(created)}
+              ${money(withdrawn)}
+            </td>
+
+            <td>
+              ${formatDate(joined)}
             </td>
 
           </tr>
@@ -1557,6 +1627,13 @@ async function loadDeposits(){
     );
 
 
+    document.getElementById(
+      "depositRecords"
+    ).textContent =
+      deposits.length
+        .toLocaleString();
+
+
     if(
       !Array.isArray(deposits) ||
       !deposits.length
@@ -1623,10 +1700,9 @@ async function loadDeposits(){
             </td>
 
             <td>
-              ${escapeHtml(
+              ${formatDate(
                 d.createdAt ??
-                d.date ??
-                "-"
+                d.date
               )}
             </td>
 
@@ -1733,6 +1809,13 @@ async function loadWithdrawals(){
     );
 
 
+    document.getElementById(
+      "withdrawalRecords"
+    ).textContent =
+      withdrawals.length
+        .toLocaleString();
+
+
     if(!withdrawals.length){
 
       table.innerHTML = `
@@ -1805,7 +1888,7 @@ async function loadWithdrawals(){
                 class="actionBtn verify"
                 onclick="verifyTransfer('${safeId}')"
               >
-                ✓ Verify
+                ✓ Mark completed
               </button>
 
             `;
@@ -1921,6 +2004,10 @@ async function loadWithdrawals(){
 
 /* =====================================================
    APPROVE WITHDRAWAL
+
+   FIX: server action is "approveWithdrawal" (camelCase), the old
+   frontend was calling "/admin/api/approve-withdrawal" which does
+   not exist on the server.
 ===================================================== */
 
 async function approveWithdrawal(
@@ -1929,7 +2016,7 @@ async function approveWithdrawal(
 
   if(
     !confirm(
-      "Approve this withdrawal?"
+      "Approve this withdrawal? This will trigger a real Paystack transfer."
     )
   ){
 
@@ -1942,7 +2029,7 @@ async function approveWithdrawal(
 
     const data =
       await api(
-        "/admin/api/approve-withdrawal",
+        "/admin/api/approveWithdrawal",
         {
           method:"POST",
 
@@ -1953,21 +2040,9 @@ async function approveWithdrawal(
       );
 
 
-    if(data.ok){
-
-      showMessage(
-        "✅ Withdrawal approved."
-      );
-
-    }else{
-
-      showMessage(
-        data.error ||
-        "Withdrawal approval failed.",
-        "error"
-      );
-
-    }
+    showMessage(
+      "✅ Withdrawal approved and transfer sent."
+    );
 
 
     await loadAll();
@@ -1980,6 +2055,9 @@ async function approveWithdrawal(
       "error"
     );
 
+
+    await loadAll();
+
   }
 
 }
@@ -1987,6 +2065,10 @@ async function approveWithdrawal(
 
 /* =====================================================
    REJECT WITHDRAWAL
+
+   FIX: server action is "rejectWithdrawal" (camelCase). The server
+   now also refunds the player's balance automatically and accepts
+   an optional "reason" field.
 ===================================================== */
 
 async function rejectWithdrawal(
@@ -2011,7 +2093,7 @@ async function rejectWithdrawal(
 
     const data =
       await api(
-        "/admin/api/reject-withdrawal",
+        "/admin/api/rejectWithdrawal",
         {
           method:"POST",
 
@@ -2023,21 +2105,9 @@ async function rejectWithdrawal(
       );
 
 
-    if(data.ok){
-
-      showMessage(
-        "✅ Withdrawal rejected."
-      );
-
-    }else{
-
-      showMessage(
-        data.error ||
-        "Rejection failed.",
-        "error"
-      );
-
-    }
+    showMessage(
+      "✅ Withdrawal rejected and balance refunded."
+    );
 
 
     await loadAll();
@@ -2056,7 +2126,12 @@ async function rejectWithdrawal(
 
 
 /* =====================================================
-   VERIFY TRANSFER
+   MARK WITHDRAWAL COMPLETED
+
+   FIX: server has no "verify-transfer" action. Once a withdrawal is
+   "processing" (after approval sent the Paystack transfer), use
+   "completeWithdrawal" to mark it finished once you've confirmed
+   the transfer actually landed in Paystack's dashboard.
 ===================================================== */
 
 async function verifyTransfer(
@@ -2065,7 +2140,8 @@ async function verifyTransfer(
 
   if(
     !confirm(
-      "Verify this Paystack transfer?"
+      "Mark this transfer as completed? Only do this after confirming " +
+      "in your Paystack dashboard that the transfer actually succeeded."
     )
   ){
 
@@ -2078,7 +2154,7 @@ async function verifyTransfer(
 
     const data =
       await api(
-        "/admin/api/verify-transfer",
+        "/admin/api/completeWithdrawal",
         {
           method:"POST",
 
@@ -2089,21 +2165,9 @@ async function verifyTransfer(
       );
 
 
-    if(data.ok){
-
-      showMessage(
-        "✅ Transfer verified."
-      );
-
-    }else{
-
-      showMessage(
-        data.error ||
-        "Transfer verification failed.",
-        "error"
-      );
-
-    }
+    showMessage(
+      "✅ Withdrawal marked as completed."
+    );
 
 
     await loadAll();
