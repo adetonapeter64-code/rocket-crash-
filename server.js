@@ -12,38 +12,6 @@
 //
 // Optional:
 //   DATA_FILE=/var/data/data.json
-//
-// ----------------------------------------------------------------------
-// FIXES APPLIED IN THIS VERSION (see comments marked "FIX:"):
-//
-// 1. Withdrawals that fail at the Paystack transfer step now AUTOMATICALLY
-//    refund the player's wallet balance instead of silently deducting it
-//    and leaving the withdrawal stuck. This is the #1 cause of "my money
-//    vanished after I clicked withdraw."
-//
-// 2. Removed the duplicate/confusing p.withdrawals stat that was written
-//    at REQUEST time (before money was ever sent). Only p.withdrawn is
-//    now used, and it is only incremented when a transfer actually
-//    completes. This makes your /admin stats trustworthy.
-//
-// 3. The Paystack webhook handler now tries to self-heal: if it gets a
-//    charge.success event for a reference it has no local record of
-//    (which happens if your storage was wiped by a Render restart before
-//    the webhook arrived), it will reconstruct the deposit from the
-//    webhook's own metadata and still credit the player, instead of
-//    silently doing nothing.
-//
-// 4. save() now logs to console if writing data.json ever fails, instead
-//    of swallowing the error.
-//
-// IMPORTANT: these fixes make the app more resilient, but they do NOT
-// replace fixing the underlying issue: on Render's Free plan there is no
-// persistent disk, so data.json is wiped on every restart/redeploy/idle
-// spin-down. You still need to either (a) upgrade to a paid Render plan
-// and attach a persistent Disk mounted at the DATA_FILE path, or
-// (b) migrate storage to a real database. Fix #3 is a safety net, not a
-// substitute for persistent storage.
-// ----------------------------------------------------------------------
 
 const http = require('http');
 const fs = require('fs');
@@ -202,11 +170,8 @@ for (const p of Object.values(db.players)) {
   if (typeof p.deposits !== 'number')
     p.deposits = 0;
 
-  // FIX #2: standardize on p.withdrawn (completed total only).
-  // p.withdrawals (requested-at-click total) is no longer written to,
-  // but we keep reading legacy files without crashing.
-  if (typeof p.withdrawn !== 'number')
-    p.withdrawn = Number(p.withdrawals || 0);
+  if (typeof p.withdrawals !== 'number')
+    p.withdrawals = 0;
 }
 
 
@@ -226,15 +191,7 @@ setInterval(() => {
   fs.writeFile(
     DATA,
     JSON.stringify(db),
-    err => {
-      // FIX #4: don't swallow write errors silently.
-      if (err) {
-        console.error(
-          'DATA SAVE ERROR:',
-          err
-        );
-      }
-    }
+    () => {}
   );
 
 }, 1000);
@@ -1187,8 +1144,7 @@ function player(
         deposits:
           0,
 
-        // FIX #2: single source of truth for completed withdrawals.
-        withdrawn:
+        withdrawals:
           0
       };
   }
@@ -1248,10 +1204,6 @@ function player(
         p.deposits || 0
       ) > 0;
   }
-
-
-  if (typeof p.withdrawn !== 'number')
-    p.withdrawn = Number(p.withdrawals || 0);
 
 
   if (!p.id)
@@ -1336,6 +1288,7 @@ const api = {
 
     const isBonus =
       requestedSource ===
+      'bonus';      requestedSource ===
       'bonus';
 
 
@@ -1900,9 +1853,6 @@ const api = {
             ) +
             '/payment/callback',
 
-          // FIX #3: this metadata is the fallback source of truth the
-          // webhook can rebuild a deposit from if our local record
-          // (data.json) has been wiped by a Render restart.
           metadata:
             JSON.stringify({
               type:
@@ -2016,7 +1966,7 @@ const api = {
     }
 
 
-    let deposit =
+    const deposit =
       db.deposits.find(
         x =>
           x.reference ===
@@ -2024,32 +1974,13 @@ const api = {
       );
 
 
-    // FIX #3: if the deposit record itself is missing (data.json was
-    // wiped), verify directly against Paystack and rebuild it here too,
-    // not just in the webhook.
     if (!deposit) {
 
-      const verified =
-        await verifyPaystackTransaction(
-          reference
-        );
+      return {
 
-      const rebuilt =
-        rebuildDepositFromTx(
-          verified,
-          t
-        );
-
-      if (!rebuilt) {
-
-        return {
-
-          error:
-            'Deposit not found'
-        };
-      }
-
-      deposit = rebuilt;
+        error:
+          'Deposit not found'
+      };
     }
 
 
@@ -2407,10 +2338,13 @@ const api = {
       );
 
 
-    // FIX #2: removed the premature p.withdrawals increment that used
-    // to happen here, at REQUEST time, before any money had actually
-    // moved. Lifetime withdrawn totals are now only ever incremented
-    // in completeWithdrawal(), once a transfer has truly succeeded.
+    p.withdrawals =
+      r2(
+        Number(
+          p.withdrawals || 0
+        ) +
+        amount
+      );
 
 
     addLog(
@@ -2634,108 +2568,6 @@ async function verifyPaystackTransaction(
 
 
 // --------------------------------------------------
-// FIX #3: REBUILD A LOST DEPOSIT RECORD FROM PAYSTACK DATA
-// --------------------------------------------------
-//
-// Used by the webhook and depositVerify when db.deposits has no record
-// for a reference Paystack says is real (e.g. after a Render restart
-// wiped data.json between deposit-initialize and webhook-arrival).
-//
-// Only works if the metadata we originally sent to Paystack at
-// /transaction/initialize is still attached to the transaction (it
-// always is, since Paystack stores it), AND the player token still
-// exists in memory. If the whole in-memory player was also wiped, this
-// cannot recover it — that requires fixing persistent storage itself.
-
-function rebuildDepositFromTx(
-  verified,
-  expectedToken
-) {
-
-  if (
-    !verified ||
-    !verified.status ||
-    !verified.data
-  ) {
-    return null;
-  }
-
-  const tx = verified.data;
-
-  if (tx.status !== 'success') {
-    return null;
-  }
-
-  let meta = tx.metadata;
-
-  if (typeof meta === 'string') {
-    try {
-      meta = JSON.parse(meta);
-    } catch (e) {
-      meta = null;
-    }
-  }
-
-  if (
-    !meta ||
-    meta.type !== 'crash_deposit' ||
-    !meta.token
-  ) {
-    return null;
-  }
-
-  if (
-    expectedToken &&
-    meta.token !== expectedToken
-  ) {
-    return null;
-  }
-
-  if (!db.players[meta.token]) {
-    console.error(
-      'DEPOSIT RECOVERY FAILED - player record also missing for token:',
-      meta.token,
-      'reference:',
-      tx.reference
-    );
-    return null;
-  }
-
-  const amount =
-    Math.floor(
-      Number(tx.amount) / 100
-    );
-
-  const rebuilt = {
-    id: tx.reference,
-    reference: tx.reference,
-    playerId: meta.playerId || '',
-    token: meta.token,
-    amount,
-    amountKobo: Number(tx.amount),
-    status: 'pending',
-    createdAt: Date.now(),
-    verifiedAt: null,
-    recovered: true
-  };
-
-  db.deposits.unshift(rebuilt);
-
-  db.deposits.length =
-    Math.min(db.deposits.length, 5000);
-
-  console.log(
-    'DEPOSIT RECOVERED from Paystack metadata:',
-    tx.reference,
-    'amount:',
-    amount
-  );
-
-  return rebuilt;
-}
-
-
-// --------------------------------------------------
 // CREDIT VERIFIED DEPOSIT
 // --------------------------------------------------
 
@@ -2897,10 +2729,7 @@ function creditDeposit(
     player:
       p
   };
-}
-
-
-// --------------------------------------------------
+  }// --------------------------------------------------
 // PAYSTACK TRANSFER RECIPIENT
 // --------------------------------------------------
 
@@ -3065,55 +2894,6 @@ async function sendPaystackTransfer(
       message:
         'Transfer failed'
     }
-  );
-}
-
-
-// FIX #1: refund a player's wallet if a withdrawal transfer never went
-// through. Shared by the admin API and used any time we need to reverse
-// a failed/rejected withdrawal so money can never be silently lost.
-function refundWithdrawal(
-  withdrawal,
-  newStatus,
-  failureMessage
-) {
-
-  const p =
-    db.players[withdrawal.token];
-
-  if (p) {
-    p.bal =
-      r2(
-        Number(p.bal) +
-        Number(withdrawal.amount)
-      );
-  } else {
-    console.error(
-      'WITHDRAWAL REFUND FAILED - player not found for token:',
-      withdrawal.token,
-      'withdrawal id:',
-      withdrawal.id
-    );
-  }
-
-  withdrawal.status = newStatus;
-  withdrawal.failure = failureMessage || null;
-  withdrawal.processedAt = Date.now();
-
-  db.finance.pendingWithdrawals =
-    Math.max(
-      0,
-      Number(db.finance.pendingWithdrawals || 0) -
-      Number(withdrawal.amount)
-    );
-
-  console.log(
-    'WITHDRAWAL AUTO-REFUNDED:',
-    withdrawal.id,
-    'amount:',
-    withdrawal.amount,
-    'reason:',
-    failureMessage
   );
 }
 
@@ -3618,7 +3398,7 @@ const server =
 
                 if (reference) {
 
-                  let deposit =
+                  const deposit =
                     db.deposits.find(
                       x =>
                         x.reference ===
@@ -3626,68 +3406,37 @@ const server =
                     );
 
 
-                  const verified =
-                    await verifyPaystackTransaction(
-                      reference
-                    );
+                  if (deposit) {
 
-
-                  // FIX #3: self-heal if the local deposit record is
-                  // missing (storage wiped between deposit-initialize
-                  // and this webhook firing).
-                  if (
-                    !deposit &&
-                    verified &&
-                    verified.status &&
-                    verified.data
-                  ) {
-
-                    deposit =
-                      rebuildDepositFromTx(
-                        verified,
-                        null
-                      );
-
-                    if (!deposit) {
-
-                      console.error(
-                        'PAYSTACK WEBHOOK: no local deposit record and ' +
-                        'could not recover from metadata for reference:',
+                    const verified =
+                      await verifyPaystackTransaction(
                         reference
                       );
-                    }
-                  }
 
 
-                  if (!deposit) {
+                    if (
+                      verified &&
+                      verified.status &&
+                      verified.data &&
+                      verified.data.status ===
+                        'success'
+                    ) {
 
-                    console.error(
-                      'PAYSTACK WEBHOOK: deposit not found for reference:',
-                      reference
-                    );
-
-                  } else if (
-                    verified &&
-                    verified.status &&
-                    verified.data &&
-                    verified.data.status ===
-                      'success'
-                  ) {
-
-                    const credited =
-                      creditDeposit(
-                        deposit,
-                        verified.data
-                      );
+                      const credited =
+                        creditDeposit(
+                          deposit,
+                          verified.data
+                        );
 
 
-                    if (credited.error) {
+                      if (credited.error) {
 
-                      console.error(
-                        'PAYSTACK WEBHOOK CREDIT ERROR:',
-                        credited.error,
-                        reference
-                      );
+                        console.error(
+                          'PAYSTACK WEBHOOK CREDIT ERROR:',
+                          credited.error,
+                          reference
+                        );
+                      }
                     }
                   }
                 }
@@ -3774,59 +3523,6 @@ const server =
         return handlePaymentCallback(
           reference,
           res
-        );
-      }
-
-
-      // --------------------------------------------
-      // ADMIN BACKUP DOWNLOAD
-      // --------------------------------------------
-      //
-      // Visit /admin/backup?key=YOUR_ADMIN_KEY in a browser to download
-      // a full snapshot of data.json (players, deposits, withdrawals,
-      // finance) at any time. Do this before every redeploy while you're
-      // still on Render's Free plan with no persistent disk - a redeploy
-      // wipes the live file, but this download is a copy safely on your
-      // own device.
-
-      if (
-        req.method === 'GET' &&
-        u.pathname === '/admin/backup'
-      ) {
-
-        const key =
-          u.searchParams.get('key') || '';
-
-        if (!adminKeyMatches(key)) {
-
-          res.writeHead(401, {
-            'Content-Type': 'application/json'
-          });
-
-          return res.end(
-            JSON.stringify({
-              ok: false,
-              error: 'Unauthorized'
-            })
-          );
-        }
-
-        const stamp =
-          new Date()
-            .toISOString()
-            .replace(/[:.]/g, '-');
-
-        const filename =
-          'crash-backup-' + stamp + '.json';
-
-        res.writeHead(200, {
-          'Content-Type': 'application/json',
-          'Content-Disposition':
-            'attachment; filename="' + filename + '"'
-        });
-
-        return res.end(
-          JSON.stringify(db, null, 2)
         );
       }
 
@@ -4058,8 +3754,6 @@ const server =
                               0
                             ),
 
-                          // FIX #2: read the same field withdraw
-                          // completion now writes to.
                           withdrawn:
                             Number(
                               p.withdrawn ||
@@ -4232,32 +3926,16 @@ const server =
 
                   else {
 
-                    // FIX #1: this used to just return an error while
-                    // leaving the player's balance already deducted
-                    // and the withdrawal stuck at "pending" forever.
-                    // Now we automatically refund the player.
-
-                    const failMsg =
-                      (transfer && transfer.message) ||
-                      'Transfer failed';
-
-                    refundWithdrawal(
-                      withdrawal,
-                      'failed',
-                      failMsg
-                    );
-
                     result = {
 
                       ok:
                         false,
 
                       error:
-                        failMsg +
-                        ' — the player\'s balance has been ' +
-                        'automatically refunded.',
-
-                      withdrawal
+                        transfer &&
+                        transfer.message
+                          ? transfer.message
+                          : 'Transfer failed'
                     };
                   }
                 }
@@ -4317,19 +3995,73 @@ const server =
 
                 else {
 
-                  refundWithdrawal(
-                    withdrawal,
-                    'rejected',
-                    'Rejected by admin'
-                  );
+                  const p =
+                    db.players[
+                      withdrawal.token
+                    ];
 
-                  result = {
 
-                    ok:
-                      true,
+                  if (!p) {
 
-                    withdrawal
-                  };
+                    result = {
+
+                      ok:
+                        false,
+
+                      error:
+                        'Player not found'
+                    };
+
+                  }
+
+
+                  else {
+
+                    p.bal =
+                      r2(
+                        Number(
+                          p.bal
+                        ) +
+
+                        Number(
+                          withdrawal.amount
+                        )
+                      );
+
+
+                    withdrawal.status =
+                      'rejected';
+
+
+                    withdrawal.rejectedAt =
+                      Date.now();
+
+
+                    db.finance
+                      .pendingWithdrawals =
+                      Math.max(
+                        0,
+
+                        Number(
+                          db.finance
+                            .pendingWithdrawals ||
+                          0
+                        ) -
+
+                        Number(
+                          withdrawal.amount
+                        )
+                      );
+
+
+                    result = {
+
+                      ok:
+                        true,
+
+                      withdrawal
+                    };
+                  }
                 }
               }
 
@@ -4395,8 +4127,6 @@ const server =
 
                   if (p) {
 
-                    // FIX #2: single field, only ever written here,
-                    // once a transfer has actually completed.
                     p.withdrawn =
                       r2(
                         Number(
@@ -4706,10 +4436,7 @@ const server =
       );
 
     }
-  );
-
-
-// --------------------------------------------------
+  );// --------------------------------------------------
 // PAYMENT CALLBACK HANDLER
 // --------------------------------------------------
 
@@ -4720,7 +4447,7 @@ async function handlePaymentCallback(
 
   try {
 
-    let deposit =
+    const deposit =
       db.deposits.find(
         x =>
           x.reference ===
@@ -4728,40 +4455,21 @@ async function handlePaymentCallback(
       );
 
 
-    let verified = null;
-
-
     if (!deposit) {
 
-      // FIX #3: try to recover here too, since the callback page is
-      // often the very first place a user lands after paying.
-      verified =
-        await verifyPaystackTransaction(
-          reference
-        );
+      res.writeHead(
+        404,
+        {
 
-      deposit =
-        rebuildDepositFromTx(
-          verified,
-          null
-        );
-
-      if (!deposit) {
-
-        res.writeHead(
-          404,
-          {
-
-            'Content-Type':
-              'text/html'
-          }
-        );
+          'Content-Type':
+            'text/html'
+        }
+      );
 
 
-        return res.end(
-          '<h2>Deposit not found</h2>'
-        );
-      }
+      return res.end(
+        '<h2>Deposit not found</h2>'
+      );
     }
 
 
@@ -4778,19 +4486,16 @@ async function handlePaymentCallback(
     }
 
 
-    if (!verified) {
-
-      verified =
-        await verifyPaystackTransaction(
-          reference
-        );
-    }
+    const result =
+      await verifyPaystackTransaction(
+        reference
+      );
 
 
     if (
-      !verified ||
-      !verified.status ||
-      !verified.data
+      !result ||
+      !result.status ||
+      !result.data
     ) {
 
       return paymentPage(
@@ -4802,7 +4507,7 @@ async function handlePaymentCallback(
 
 
     const tx =
-      verified.data;
+      result.data;
 
 
     if (
@@ -5121,20 +4826,6 @@ server.listen(
 
       console.log(
         'WARNING: APP_URL is not configured'
-      );
-
-    }
-
-
-    if (
-      DATA === path.join(__dirname, 'data.json')
-    ) {
-
-      console.log(
-        'WARNING: DATA_FILE is not set to a persistent disk path. ' +
-        'On Render, data.json will be WIPED on every restart/redeploy ' +
-        'unless you attach a paid-plan persistent Disk and set ' +
-        'DATA_FILE to a path on it (e.g. /var/data/data.json).'
       );
 
     }
