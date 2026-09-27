@@ -1320,7 +1320,7 @@ async function loadState(){
 
   const data =
     await api(
-      "/admin/api/players",
+      "/admin/api/state",
       {
         method:"POST",
         body:JSON.stringify({})
@@ -1942,7 +1942,7 @@ async function approveWithdrawal(
 
     const data =
       await api(
-        "/admin/api/approveWithdrawal",
+        "/admin/api/approve-withdrawal",
         {
           method:"POST",
 
@@ -2011,7 +2011,7 @@ async function rejectWithdrawal(
 
     const data =
       await api(
-        "/admin/api/rejectWithdrawal",
+        "/admin/api/reject-withdrawal",
         {
           method:"POST",
 
@@ -2078,7 +2078,7 @@ async function verifyTransfer(
 
     const data =
       await api(
-        "/admin/api/completeWithdrawal",
+        "/admin/api/verify-transfer",
         {
           method:"POST",
 
@@ -2246,4 +2246,4 @@ setInterval(()=>{
 </script>
 
 </body>
-          </html>
+        </html>
