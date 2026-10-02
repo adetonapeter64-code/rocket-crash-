@@ -4,85 +4,1161 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Crash Admin</title>
+
 <style>
-:root{--bg:#020008;--panel:#0b0320;--line:#5c20a0;--green:#19e96f;--red:#ff304f;--gold:#ffd02d;--muted:#a7a0c5;--text:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#020008;--panel:#0b0320;--text:#fff}}
-:root[data-theme="dark"]{--bg:#020008;--panel:#0b0320;--text:#fff}
+:root{
+  --bg:#020008;
+  --panel:#0b0320;
+  --line:#5c20a0;
+  --green:#19e96f;
+  --red:#ff304f;
+  --gold:#ffd02d;
+  --muted:#a7a0c5;
+  --text:#fff;
+}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(circle at 50% 0,#180040 0,#080019 45%,var(--bg) 100%);color:var(--text);font-family:Arial,Helvetica,sans-serif;min-height:100vh}
-.wrap{max-width:720px;margin:auto;padding:12px}
-h1{font-size:22px;margin:6px 0 12px}h1 span{color:#ffb000}
-.card{border:1px solid var(--line);border-radius:16px;background:rgba(8,0,24,.85);padding:12px 14px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.stat b{display:block;font-size:26px;color:var(--gold)}.stat small{color:var(--muted)}
-.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#555;margin-right:6px}.dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+body{
+  margin:0;
+  background:radial-gradient(circle at 50% 0,#180040 0,#080019 45%,var(--bg) 100%);
+  color:var(--text);
+  font-family:Arial,Helvetica,sans-serif;
+  min-height:100vh;
+}
+.wrap{max-width:760px;margin:auto;padding:12px}
+h1{font-size:22px;margin:6px 0 12px}
+h1 span{color:#ffb000}
+
+.card{
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:rgba(8,0,24,.88);
+  padding:12px 14px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:12px;
+}
+
+.stat b{
+  display:block;
+  font-size:26px;
+  color:var(--gold);
+}
+.stat small{color:var(--muted)}
+
 input,button{font:inherit}
-input{width:100%;padding:12px;background:#05000e;color:#fff;border:1px solid #542184;border-radius:10px;outline:0;font-size:16px}
-button{cursor:pointer;background:#9d36ff;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:900}
-.list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
-.p{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center}
-.av{width:44px;height:44px;border-radius:50%;background:#ffb900;color:#2a1600;display:grid;place-items:center;font-weight:900;font-size:20px}
-.p b{font-size:16px}.p small{color:var(--muted);display:block;font-size:12px;line-height:1.5}
-.p .num{text-align:right;font-size:13px}.p .num strong{display:block;font-size:17px;color:var(--gold)}
-.win{color:var(--green)}.lose{color:var(--red)}
-.p button{margin-top:6px;padding:6px 10px;font-size:12px;background:#26104d;border:1px solid #4d1d82}
-#gate{max-width:380px;margin:18vh auto 0;text-align:center}#gate input{margin:12px 0}#err{color:#ff6b8a;min-height:20px;font-size:13px}
-.note{color:var(--muted);font-size:12px;margin:12px 0}
+
+input{
+  width:100%;
+  padding:12px;
+  background:#05000e;
+  color:#fff;
+  border:1px solid #542184;
+  border-radius:10px;
+  outline:0;
+  font-size:16px;
+}
+
+button{
+  cursor:pointer;
+  background:#9d36ff;
+  color:#fff;
+  border:0;
+  border-radius:10px;
+  padding:10px 14px;
+  font-weight:900;
+}
+
+button:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+.tabs{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  margin:12px 0;
+}
+
+.tabs button{
+  white-space:nowrap;
+  background:#1a0735;
+  border:1px solid #4d1d82;
+}
+
+.tabs button.on{
+  background:#9d36ff;
+  border-color:#bd72ff;
+}
+
+.list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:10px;
+}
+
+.p{
+  display:grid;
+  grid-template-columns:44px 1fr auto;
+  gap:10px;
+  align-items:center;
+}
+
+.av{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  background:#ffb900;
+  color:#2a1600;
+  display:grid;
+  place-items:center;
+  font-weight:900;
+  font-size:20px;
+}
+
+.p b{font-size:16px}
+.p small{
+  color:var(--muted);
+  display:block;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.p .num{
+  text-align:right;
+  font-size:13px;
+}
+
+.p .num strong{
+  display:block;
+  font-size:17px;
+  color:var(--gold);
+}
+
+.dot{
+  display:inline-block;
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#555;
+  margin-right:6px;
+}
+
+.dot.on{
+  background:var(--green);
+  box-shadow:0 0 8px var(--green);
+}
+
+.win{color:var(--green)}
+.lose{color:var(--red)}
+
+.actions{
+  display:flex;
+  gap:6px;
+  justify-content:flex-end;
+  margin-top:7px;
+}
+
+.actions button{
+  padding:7px 9px;
+  font-size:12px;
+}
+
+.approve{
+  background:#087a3b;
+  border:1px solid #19e96f;
+}
+
+.reject{
+  background:#601329;
+  border:1px solid #ff304f;
+}
+
+.note{
+  color:var(--muted);
+  font-size:12px;
+  margin:12px 0;
+  line-height:1.5;
+}
+
+.empty{
+  color:var(--muted);
+  text-align:center;
+  padding:20px 10px;
+}
+
+.tx{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+}
+
+.tx strong{font-size:15px}
+.tx small{
+  color:var(--muted);
+  display:block;
+  line-height:1.5;
+}
+
+.status{
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:8px;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+}
+
+.status.pending{
+  background:#4d3700;
+  color:#ffd02d;
+}
+
+.status.success{
+  background:#063d21;
+  color:#19e96f;
+}
+
+.status.processing{
+  background:#142b54;
+  color:#6db2ff;
+}
+
+.status.failed,
+.status.rejected,
+.status.reversed{
+  background:#4d1020;
+  color:#ff6b8a;
+}
+
+#gate{
+  max-width:380px;
+  margin:18vh auto 0;
+  text-align:center;
+}
+
+#gate input{margin:12px 0}
+
+#err{
+  color:#ff6b8a;
+  min-height:20px;
+  font-size:13px;
+  margin-top:8px;
+}
+
+.sectionTitle{
+  margin:14px 0 8px;
+  font-size:15px;
+}
+
+.money{
+  color:var(--gold);
+  font-weight:900;
+}
+
+.withdrawMeta{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+
+.reason{
+  margin-top:7px;
+}
+
+.reason input{
+  font-size:13px;
+  padding:8px;
+}
+
+@media(max-width:520px){
+  .p{
+    grid-template-columns:40px 1fr;
+  }
+
+  .p .num{
+    grid-column:2;
+    text-align:left;
+  }
+
+  .actions{
+    justify-content:flex-start;
+  }
+}
 </style>
 </head>
-<body>
-<div class="wrap">
-  <div id="gate" class="card"><h1>🛠 Crash <span>Admin</span></h1><input id="key" type="password" placeholder="Admin key" autocomplete="current-password"><button id="enter" style="width:100%">OPEN</button><div id="err"></div></div>
 
-  <div id="main" hidden>
+<body>
+
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div id="gate" class="card">
     <h1>🛠 Crash <span>Admin</span></h1>
+
+    <input
+      id="key"
+      type="password"
+      placeholder="Admin key"
+      autocomplete="current-password"
+    >
+
+    <button id="enter" style="width:100%">
+      OPEN ADMIN
+    </button>
+
+    <div id="err"></div>
+  </div>
+
+
+  <!-- ADMIN -->
+  <div id="main" hidden>
+
+    <h1>🛠 Crash <span>Admin</span></h1>
+
+    <!-- STATS -->
     <div class="grid">
-      <div class="card stat"><b id="online">0</b><small>Online now</small></div>
-      <div class="card stat"><b id="total">0</b><small>Total players</small></div>
-      <div class="card stat"><b id="bets">0</b><small>Bets this round</small></div>
-      <div class="card stat"><b id="phase">—</b><small id="rid">Round</small></div>
+
+      <div class="card stat">
+        <b id="online">0</b>
+        <small>Online now</small>
+      </div>
+
+      <div class="card stat">
+        <b id="total">0</b>
+        <small>Total players</small>
+      </div>
+
+      <div class="card stat">
+        <b id="bets">0</b>
+        <small>Bets this round</small>
+      </div>
+
+      <div class="card stat">
+        <b id="phase">—</b>
+        <small id="rid">Round</small>
+      </div>
+
     </div>
-    <input id="q" placeholder="Search name, ID or Telegram @username">
-    <div class="list" id="list"></div>
-    <p class="note">Each player has a permanent ID shown under their name. Telegram details appear only when the game is opened inside your verified Telegram mini app. This panel cannot see or change any crash result.</p>
+
+
+    <!-- TABS -->
+    <div class="tabs">
+
+      <button id="playersTab" class="on">
+        👥 Players
+      </button>
+
+      <button id="financeTab">
+        💰 Finance
+      </button>
+
+    </div>
+
+
+    <!-- PLAYERS -->
+    <section id="playersSection">
+
+      <input
+        id="q"
+        placeholder="Search name, ID or Telegram @username"
+      >
+
+      <div class="list" id="list"></div>
+
+      <p class="note">
+        Player balances shown here are real stored balances from the server.
+        The old Restore Coins action is not used in real-money mode.
+      </p>
+
+    </section>
+
+
+    <!-- FINANCE -->
+    <section id="financeSection" hidden>
+
+      <div class="card">
+
+        <h3 class="sectionTitle">
+          💳 Transactions
+        </h3>
+
+        <div class="list" id="transactions"></div>
+
+      </div>
+
+
+      <div class="card" style="margin-top:10px">
+
+        <h3 class="sectionTitle">
+          💸 Withdrawals
+        </h3>
+
+        <div class="list" id="withdrawals"></div>
+
+      </div>
+
+    </section>
+
   </div>
 </div>
 
+
 <script>
+
 const $=id=>document.getElementById(id);
-const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
-const fmt=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
-let key=null,data=null,timer=null;
-try{key=localStorage.getItem('adminKey')}catch(e){}
+
+const esc=t=>String(t==null?'':t)
+  .replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+
+const fmt=n=>Number(n||0)
+  .toLocaleString(undefined,{maximumFractionDigits:2});
+
+const dateFmt=t=>{
+  if(!t)return '—';
+
+  try{
+    return new Date(t).toLocaleString();
+  }catch(e){
+    return '—';
+  }
+};
+
+const statusClass=s=>{
+  return String(s||'pending')
+    .toLowerCase()
+    .replace(/[^a-z]/g,'');
+};
+
+let key=null;
+let data=null;
+let finance=null;
+let timer=null;
+
+let activeTab='players';
+
+try{
+  key=localStorage.getItem('adminKey');
+}catch(e){}
+
+
+/* ADMIN API */
 
 async function call(path,body){
-  const r=await fetch('/admin/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({key},body||{}))});
-  return r.json();
+
+  const r=await fetch('/admin/api/'+path,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify(
+      Object.assign(
+        {key},
+        body||{}
+      )
+    )
+  });
+
+  const j=await r.json();
+
+  if(!r.ok || !j.ok){
+    throw new Error(j.error||'Request failed');
+  }
+
+  return j;
 }
-function ago(t){if(!t)return 'never';const s=Math.max(0,Math.round((Date.now()-t)/1000));return s<60?s+'s ago':s<3600?Math.round(s/60)+' min ago':s<86400?Math.round(s/3600)+' h ago':Math.round(s/86400)+' d ago'}
-function render(){
+
+
+/* TIME */
+
+function ago(t){
+
+  if(!t)return 'never';
+
+  const s=Math.max(
+    0,
+    Math.round((Date.now()-t)/1000)
+  );
+
+  if(s<60)return s+'s ago';
+
+  if(s<3600)return Math.round(s/60)+' min ago';
+
+  if(s<86400)return Math.round(s/3600)+' h ago';
+
+  return Math.round(s/86400)+' d ago';
+}
+
+
+/* PLAYER RENDER */
+
+function renderPlayers(){
+
   if(!data)return;
-  $('online').textContent=data.online;$('total').textContent=data.total;$('bets').textContent=data.round.bets;
-  $('phase').textContent={count:'Betting',fly:'Flying',over:'Crashed'}[data.round.phase]||'—';$('rid').textContent='Round #'+data.round.id;
+
+  $('online').textContent=data.online;
+  $('total').textContent=data.total;
+  $('bets').textContent=data.round.bets;
+
+  $('phase').textContent={
+    count:'Betting',
+    fly:'Flying',
+    over:'Crashed'
+  }[data.round.phase]||'—';
+
+  $('rid').textContent='Round #'+data.round.id;
+
   const q=$('q').value.trim().toLowerCase();
-  const rows=data.players.filter(p=>!q||[p.name,p.id,p.tg&&p.tg.username,p.tg&&p.tg.name].join(' ').toLowerCase().includes(q))
-    .sort((a,b)=>(b.online-a.online)||(b.seen-a.seen));
-  $('list').innerHTML=rows.length?rows.map(p=>'<div class="card p"><div class="av">'+esc((p.name||'?')[0].toUpperCase())+'</div><div><b><span class="dot'+(p.online?' on':'')+'"></span>'+esc(p.name)+'</b><small>ID '+esc(p.id)+(p.tg?' · TG '+esc(p.tg.username?'@'+p.tg.username:p.tg.id)+(p.tg.name?' ('+esc(p.tg.name)+')':''):'')+'<br>'+(p.online?'Online now':'Last seen '+ago(p.seen))+' · joined '+ago(p.first)+'<br>Rounds '+p.rounds+' · wins '+p.wins+' · best '+(p.best?p.best.toFixed(2)+'x':'—')+(p.bet?'<br>Bet 🪙 '+fmt(p.bet.amt)+(p.bet.auto?' (auto '+p.bet.auto+'x)':'')+(p.bet.at?' · cashed at '+p.bet.at.toFixed(2)+'x':''):'')+'</small></div><div class="num"><strong>🪙 '+fmt(p.bal)+'</strong><span class="'+(p.pnl>=0?'win':'lose')+'">'+(p.pnl>=0?'+':'')+fmt(p.pnl)+'</span><br><button data-id="'+esc(p.id)+'">Restore</button></div></div>').join(''):'<div class="card" style="color:var(--muted)">No players match.</div>'}
+
+  const rows=data.players
+    .filter(p=>{
+
+      const tg=p.tg
+        ?(
+          (p.tg.username||'')+' '+
+          (p.tg.name||'')+' '+
+          (p.tg.id||'')
+        )
+        :'';
+
+      return !q ||
+        [
+          p.name,
+          p.id,
+          tg
+        ]
+        .join(' ')
+        .toLowerCase()
+        .includes(q);
+
+    })
+    .sort(
+      (a,b)=>
+        (b.online-a.online)||
+        (b.seen-a.seen)
+    );
+
+
+  $('list').innerHTML=rows.length
+    ?rows.map(p=>{
+
+      const bet=p.bet;
+
+      return `
+        <div class="card p">
+
+          <div class="av">
+            ${esc((p.name||'?')[0].toUpperCase())}
+          </div>
+
+          <div>
+
+            <b>
+              <span class="dot${p.online?' on':''}"></span>
+              ${esc(p.name)}
+            </b>
+
+            <small>
+
+              ID ${esc(p.id)}
+
+              ${
+                p.tg
+                ?
+                ' · TG '+
+                esc(
+                  p.tg.username
+                  ?'@'+p.tg.username
+                  :p.tg.id
+                )+
+                (
+                  p.tg.name
+                  ?' ('+esc(p.tg.name)+')'
+                  :''
+                )
+                :''
+              }
+
+              <br>
+
+              ${
+                p.online
+                ?'Online now'
+                :'Last seen '+ago(p.seen)
+              }
+
+              · joined ${ago(p.first)}
+
+              <br>
+
+              Rounds ${p.rounds}
+              · wins ${p.wins}
+              · best ${
+                p.best
+                ?p.best.toFixed(2)+'x'
+                :'—'
+              }
+
+              ${
+                bet
+                ?
+                `
+                <br>
+                Bet 🪙 ${fmt(bet.amt)}
+                ${
+                  bet.auto
+                  ?' · auto '+bet.auto+'x'
+                  :''
+                }
+                ${
+                  bet.at
+                  ?' · cashed at '+bet.at.toFixed(2)+'x'
+                  :''
+                }
+                `
+                :''
+              }
+
+              ${
+                p.bonusAvailable!==undefined
+                ?
+                `
+                <br>
+                Bonus:
+                ${
+                  p.bonusUsed
+                  ?'Used'
+                  :p.bonusAvailable
+                  ?'Available'
+                  :'—'
+                }
+                `
+                :''
+              }
+
+            </small>
+
+          </div>
+
+
+          <div class="num">
+
+            <strong>
+              🪙 ${fmt(p.bal)}
+            </strong>
+
+            <span class="${p.pnl>=0?'win':'lose'}">
+              ${p.pnl>=0?'+':''}${fmt(p.pnl)}
+            </span>
+
+          </div>
+
+        </div>
+      `;
+
+    }).join('')
+
+    :
+    '<div class="card empty">No players match.</div>';
+}
+
+
+/* FINANCE RENDER */
+
+function renderFinance(){
+
+  if(!finance)return;
+
+
+  const transactions=
+    Array.isArray(finance.transactions)
+    ?finance.transactions
+    :[];
+
+
+  const withdrawals=
+    Array.isArray(finance.withdrawals)
+    ?finance.withdrawals
+    :[];
+
+
+  /* TRANSACTIONS */
+
+  $('transactions').innerHTML=
+
+    transactions.length
+
+    ?
+
+    transactions.map(x=>{
+
+      const amount=Number(x.amount||0);
+
+      return `
+        <div class="card">
+
+          <div class="tx">
+
+            <div>
+
+              <strong>
+                ${
+                  x.type==='deposit'
+                  ?'💳 Deposit'
+                  :'🧾 '+esc(x.type||'Transaction')
+                }
+              </strong>
+
+              <small>
+                Ref:
+                ${esc(x.reference||x.id||'—')}
+              </small>
+
+              <small>
+                ${dateFmt(x.createdAt||x.at)}
+              </small>
+
+            </div>
+
+            <div style="text-align:right">
+
+              <strong class="money">
+                ₦${fmt(amount)}
+              </strong>
+
+              <small>
+                ${esc(x.status||'pending')}
+              </small>
+
+            </div>
+
+          </div>
+
+        </div>
+      `;
+
+    }).join('')
+
+    :
+
+    '<div class="card empty">No transactions yet.</div>';
+
+
+  /* WITHDRAWALS */
+
+  $('withdrawals').innerHTML=
+
+    withdrawals.length
+
+    ?
+
+    withdrawals.map(w=>{
+
+      const amount=Number(w.amount||0);
+
+      const status=
+        String(w.status||'pending').toLowerCase();
+
+      const player=
+        data&&data.players
+        ?data.players.find(p=>{
+            return p.id===w.playerId ||
+                   p.id===w.id ||
+                   p.token===w.token;
+          })
+        :null;
+
+      const playerName=
+        player
+        ?player.name
+        :(
+          w.name||
+          w.playerName||
+          'Player'
+        );
+
+
+      return `
+        <div class="card">
+
+          <div class="tx">
+
+            <div>
+
+              <strong>
+                💸 ${esc(playerName)}
+              </strong>
+
+              <small>
+                ${esc(w.bankName||w.bank||'Bank')}
+                · ${esc(w.accountNumber||'')}
+              </small>
+
+              <small>
+                ${
+                  w.accountName
+                  ?esc(w.accountName)
+                  :''
+                }
+              </small>
+
+              <small>
+                ID: ${esc(w.id||'—')}
+              </small>
+
+              <small>
+                ${dateFmt(w.createdAt||w.createdAt)}
+              </small>
+
+            </div>
+
+            <div style="text-align:right">
+
+              <strong class="money">
+                ₦${fmt(amount)}
+              </strong>
+
+              <span class="status ${statusClass(status)}">
+                ${esc(status)}
+              </span>
+
+            </div>
+
+          </div>
+
+
+          ${
+            status==='pending'
+
+            ?
+
+            `
+              <div class="actions">
+
+                <button
+                  class="approve"
+                  data-action="approve"
+                  data-id="${esc(w.id)}"
+                >
+                  ✅ APPROVE
+                </button>
+
+                <button
+                  class="reject"
+                  data-action="reject"
+                  data-id="${esc(w.id)}"
+                >
+                  ❌ REJECT
+                </button>
+
+              </div>
+
+              <div class="reason" hidden id="reason-${esc(w.id)}">
+                <input
+                  id="reasonInput-${esc(w.id)}"
+                  placeholder="Reason for rejection"
+                >
+              </div>
+            `
+
+            :''
+          }
+
+        </div>
+      `;
+
+    }).join('')
+
+    :
+
+    '<div class="card empty">No withdrawals yet.</div>';
+}
+
+
+/* LOAD FINANCE */
+
+async function loadFinance(){
+
+  try{
+
+    finance=await call('financials');
+
+    renderFinance();
+
+  }catch(e){
+
+    $('transactions').innerHTML=
+      '<div class="card empty">'+
+      esc(e.message)+
+      '</div>';
+
+    $('withdrawals').innerHTML=
+      '<div class="card empty">'+
+      esc(e.message)+
+      '</div>';
+
+  }
+
+}
+
+
+/* POLL STATE */
+
 async function poll(){
-  try{const j=await call('state');if(!j.ok)throw new Error(j.error);data=j;render()}
-  catch(e){clearInterval(timer);$('main').hidden=true;$('gate').hidden=false;$('err').textContent=e.message||'Could not reach the server'}
+
+  try{
+
+    const j=await call('state');
+
+    data=j;
+
+    renderPlayers();
+
+    if(activeTab==='finance'){
+      await loadFinance();
+    }
+
+  }catch(e){
+
+    clearInterval(timer);
+
+    $('main').hidden=true;
+    $('gate').hidden=false;
+
+    $('err').textContent=
+      e.message||
+      'Could not reach the server';
+
+  }
+
 }
+
+
+/* OPEN ADMIN */
+
 async function open(){
+
   key=$('key').value.trim()||key;
-  const j=await call('state');
-  if(!j.ok){$('err').textContent=j.error||'Wrong admin key';return}
-  try{localStorage.setItem('adminKey',key)}catch(e){}
-  $('gate').hidden=true;$('main').hidden=false;data=j;render();clearInterval(timer);timer=setInterval(poll,2000)
+
+  if(!key){
+
+    $('err').textContent='Enter your admin key.';
+    return;
+  }
+
+  try{
+
+    const j=await call('state');
+
+    try{
+      localStorage.setItem(
+        'adminKey',
+        key
+      );
+    }catch(e){}
+
+    $('gate').hidden=true;
+    $('main').hidden=false;
+
+    data=j;
+
+    renderPlayers();
+
+    clearInterval(timer);
+
+    timer=setInterval(
+      poll,
+      2000
+    );
+
+  }catch(e){
+
+    $('err').textContent=
+      e.message||
+      'Wrong admin key';
+
+  }
 }
-$('enter').onclick=open;$('key').onkeydown=e=>{if(e.key==='Enter')open()};
-$('q').oninput=render;
-$('list').onclick=async e=>{const b=e.target.closest('button');if(!b)return;b.disabled=true;await call('restore',{id:b.dataset.id});poll()};
-if(key){$('key').value=key;open()}
+
+
+/* TABS */
+
+$('playersTab').onclick=()=>{
+
+  activeTab='players';
+
+  $('playersTab').classList.add('on');
+  $('financeTab').classList.remove('on');
+
+  $('playersSection').hidden=false;
+  $('financeSection').hidden=true;
+
+};
+
+
+$('financeTab').onclick=async()=>{
+
+  activeTab='finance';
+
+  $('financeTab').classList.add('on');
+  $('playersTab').classList.remove('on');
+
+  $('playersSection').hidden=true;
+  $('financeSection').hidden=false;
+
+  await loadFinance();
+
+};
+
+
+/* SEARCH */
+
+$('q').oninput=renderPlayers;
+
+
+/* FINANCE BUTTONS */
+
+$('withdrawals').onclick=async e=>{
+
+  const b=e.target.closest('button');
+
+  if(!b)return;
+
+  const id=b.dataset.id;
+
+  if(!id)return;
+
+
+  if(b.dataset.action==='approve'){
+
+    if(
+      !confirm(
+        'Approve this withdrawal and send the Paystack transfer?'
+      )
+    )return;
+
+    b.disabled=true;
+
+    try{
+
+      await call(
+        'approveWithdrawal',
+        {id}
+      );
+
+      await loadFinance();
+      await poll();
+
+    }catch(err){
+
+      alert(err.message);
+
+      b.disabled=false;
+
+    }
+
+    return;
+  }
+
+
+  if(b.dataset.action==='reject'){
+
+    const box=$('reason-'+id);
+
+    if(box){
+
+      box.hidden=false;
+
+      const input=$('reasonInput-'+id);
+
+      if(input){
+        input.focus();
+      }
+
+      b.textContent='❌ CONFIRM REJECT';
+      b.dataset.action='confirm-reject';
+
+      return;
+    }
+
+  }
+
+
+  if(b.dataset.action==='confirm-reject'){
+
+    const input=$('reasonInput-'+id);
+
+    const reason=
+      input
+      ?input.value.trim()
+      :'';
+
+
+    if(
+      !confirm(
+        'Reject this withdrawal and return the money to the player balance?'
+      )
+    )return;
+
+    b.disabled=true;
+
+    try{
+
+      await call(
+        'rejectWithdrawal',
+        {
+          id,
+          reason
+        }
+      );
+
+      await loadFinance();
+      await poll();
+
+    }catch(err){
+
+      alert(err.message);
+
+      b.disabled=false;
+
+    }
+
+  }
+
+};
+
+
+/* ENTER KEY */
+
+$('enter').onclick=open;
+
+$('key').onkeydown=e=>{
+
+  if(e.key==='Enter'){
+    open();
+  }
+
+};
+
+
+/* AUTO LOGIN */
+
+if(key){
+
+  $('key').value=key;
+
+  open();
+
+}
+
 </script>
+
 </body>
-</html>
+  </html>
