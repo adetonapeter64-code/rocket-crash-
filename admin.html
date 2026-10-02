@@ -16,23 +16,45 @@
   --muted:#a7a0c5;
   --text:#fff;
 }
-*{box-sizing:border-box}
+
+*{
+  box-sizing:border-box;
+}
+
 body{
   margin:0;
-  background:radial-gradient(circle at 50% 0,#180040 0,#080019 45%,var(--bg) 100%);
+  background:radial-gradient(
+    circle at 50% 0,
+    #180040 0,
+    #080019 45%,
+    var(--bg) 100%
+  );
   color:var(--text);
   font-family:Arial,Helvetica,sans-serif;
   min-height:100vh;
 }
-.wrap{max-width:760px;margin:auto;padding:12px}
-h1{font-size:22px;margin:6px 0 12px}
-h1 span{color:#ffb000}
+
+.wrap{
+  max-width:720px;
+  margin:auto;
+  padding:12px;
+}
+
+h1{
+  font-size:22px;
+  margin:6px 0 12px;
+}
+
+h1 span{
+  color:#ffb000;
+}
 
 .card{
   border:1px solid var(--line);
   border-radius:16px;
-  background:rgba(8,0,24,.88);
+  background:rgba(8,0,24,.85);
   padding:12px 14px;
+  margin-bottom:10px;
 }
 
 .grid{
@@ -47,9 +69,30 @@ h1 span{color:#ffb000}
   font-size:26px;
   color:var(--gold);
 }
-.stat small{color:var(--muted)}
 
-input,button{font:inherit}
+.stat small{
+  color:var(--muted);
+}
+
+.dot{
+  display:inline-block;
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#555;
+  margin-right:6px;
+}
+
+.dot.on{
+  background:var(--green);
+  box-shadow:0 0 8px var(--green);
+}
+
+input,
+button,
+textarea{
+  font:inherit;
+}
 
 input{
   width:100%;
@@ -60,6 +103,20 @@ input{
   border-radius:10px;
   outline:0;
   font-size:16px;
+}
+
+textarea{
+  width:100%;
+  min-height:180px;
+  padding:12px;
+  background:#05000e;
+  color:#fff;
+  border:1px solid #542184;
+  border-radius:10px;
+  outline:0;
+  font-size:16px;
+  resize:vertical;
+  font-family:monospace;
 }
 
 button{
@@ -75,24 +132,6 @@ button{
 button:disabled{
   opacity:.5;
   cursor:not-allowed;
-}
-
-.tabs{
-  display:flex;
-  gap:8px;
-  overflow-x:auto;
-  margin:12px 0;
-}
-
-.tabs button{
-  white-space:nowrap;
-  background:#1a0735;
-  border:1px solid #4d1d82;
-}
-
-.tabs button.on{
-  background:#9d36ff;
-  border-color:#bd72ff;
 }
 
 .list{
@@ -121,7 +160,10 @@ button:disabled{
   font-size:20px;
 }
 
-.p b{font-size:16px}
+.p b{
+  font-size:16px;
+}
+
 .p small{
   color:var(--muted);
   display:block;
@@ -140,33 +182,129 @@ button:disabled{
   color:var(--gold);
 }
 
-.dot{
+.win{
+  color:var(--green);
+}
+
+.lose{
+  color:var(--red);
+}
+
+.p button{
+  margin-top:6px;
+  padding:6px 10px;
+  font-size:12px;
+  background:#26104d;
+  border:1px solid #4d1d82;
+}
+
+#gate{
+  max-width:380px;
+  margin:18vh auto 0;
+  text-align:center;
+}
+
+#gate input{
+  margin:12px 0;
+}
+
+#err{
+  color:#ff6b8a;
+  min-height:20px;
+  font-size:13px;
+}
+
+.note{
+  color:var(--muted);
+  font-size:12px;
+  margin:12px 0;
+}
+
+.tabs{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:7px;
+  margin-bottom:12px;
+}
+
+.tabs button{
+  background:#17062e;
+  border:1px solid #542184;
+  padding:10px 5px;
+  font-size:12px;
+}
+
+.tabs button.on{
+  background:#9d36ff;
+  border-color:#c579ff;
+}
+
+.sectionTitle{
+  margin:0 0 10px;
+  font-size:18px;
+}
+
+.tableWrap{
+  overflow-x:auto;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12px;
+}
+
+th,
+td{
+  border-bottom:1px solid #2d1550;
+  padding:9px 6px;
+  text-align:left;
+  vertical-align:top;
+}
+
+th{
+  color:var(--gold);
+}
+
+.status{
   display:inline-block;
-  width:9px;
-  height:9px;
-  border-radius:50%;
-  background:#555;
-  margin-right:6px;
+  padding:4px 7px;
+  border-radius:7px;
+  font-size:10px;
+  font-weight:900;
 }
 
-.dot.on{
-  background:var(--green);
-  box-shadow:0 0 8px var(--green);
+.status.pending{
+  background:#5a4300;
+  color:#ffd84a;
 }
 
-.win{color:var(--green)}
-.lose{color:var(--red)}
+.status.success{
+  background:#073d20;
+  color:#19e96f;
+}
 
-.actions{
+.status.processing{
+  background:#24205c;
+  color:#9d9dff;
+}
+
+.status.rejected,
+.status.failed,
+.status.reversed{
+  background:#4c0715;
+  color:#ff6b8a;
+}
+
+.financeButtons{
   display:flex;
   gap:6px;
-  justify-content:flex-end;
-  margin-top:7px;
+  flex-wrap:wrap;
 }
 
-.actions button{
+.financeButtons button{
   padding:7px 9px;
-  font-size:12px;
+  font-size:11px;
 }
 
 .approve{
@@ -179,106 +317,87 @@ button:disabled{
   border:1px solid #ff304f;
 }
 
-.note{
+.testButtons{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+
+.testButtons button{
+  flex:1;
+  min-width:120px;
+}
+
+.testRun{
+  background:#087a3b;
+  border:1px solid #19e96f;
+}
+
+.testClear{
+  background:#601329;
+  border:1px solid #ff304f;
+}
+
+.historyGrid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:10px;
+}
+
+.historyItem{
+  border:1px solid #542184;
+  background:#080019;
+  border-radius:10px;
+  padding:10px;
+  text-align:center;
+  font-weight:900;
+  font-size:17px;
+}
+
+.historyItem small{
+  display:block;
   color:var(--muted);
-  font-size:12px;
-  margin:12px 0;
-  line-height:1.5;
+  font-size:10px;
+  margin-top:4px;
+  font-weight:normal;
+}
+
+.testDisplay{
+  margin-top:12px;
+  border:1px solid #542184;
+  border-radius:12px;
+  padding:15px;
+  text-align:center;
+  background:#05000e;
+}
+
+.testMultiplier{
+  font-size:42px;
+  font-weight:900;
+  color:var(--gold);
+}
+
+.testStatus{
+  color:var(--muted);
+  margin-top:5px;
 }
 
 .empty{
   color:var(--muted);
   text-align:center;
-  padding:20px 10px;
-}
-
-.tx{
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  align-items:center;
-}
-
-.tx strong{font-size:15px}
-.tx small{
-  color:var(--muted);
-  display:block;
-  line-height:1.5;
-}
-
-.status{
-  display:inline-block;
-  padding:4px 8px;
-  border-radius:8px;
-  font-size:11px;
-  font-weight:900;
-  text-transform:uppercase;
-}
-
-.status.pending{
-  background:#4d3700;
-  color:#ffd02d;
-}
-
-.status.success{
-  background:#063d21;
-  color:#19e96f;
-}
-
-.status.processing{
-  background:#142b54;
-  color:#6db2ff;
-}
-
-.status.failed,
-.status.rejected,
-.status.reversed{
-  background:#4d1020;
-  color:#ff6b8a;
-}
-
-#gate{
-  max-width:380px;
-  margin:18vh auto 0;
-  text-align:center;
-}
-
-#gate input{margin:12px 0}
-
-#err{
-  color:#ff6b8a;
-  min-height:20px;
-  font-size:13px;
-  margin-top:8px;
-}
-
-.sectionTitle{
-  margin:14px 0 8px;
-  font-size:15px;
-}
-
-.money{
-  color:var(--gold);
-  font-weight:900;
-}
-
-.withdrawMeta{
-  margin-top:4px;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.5;
-}
-
-.reason{
-  margin-top:7px;
-}
-
-.reason input{
-  font-size:13px;
-  padding:8px;
 }
 
 @media(max-width:520px){
+  .historyGrid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .tabs{
+    grid-template-columns:repeat(2,1fr);
+  }
+
   .p{
     grid-template-columns:40px 1fr;
   }
@@ -286,10 +405,6 @@ button:disabled{
   .p .num{
     grid-column:2;
     text-align:left;
-  }
-
-  .actions{
-    justify-content:flex-start;
   }
 }
 </style>
@@ -301,7 +416,10 @@ button:disabled{
 
   <!-- LOGIN -->
   <div id="gate" class="card">
-    <h1>🛠 Crash <span>Admin</span></h1>
+
+    <h1>
+      🛠 Crash <span>Admin</span>
+    </h1>
 
     <input
       id="key"
@@ -310,18 +428,25 @@ button:disabled{
       autocomplete="current-password"
     >
 
-    <button id="enter" style="width:100%">
-      OPEN ADMIN
+    <button
+      id="enter"
+      style="width:100%"
+    >
+      OPEN
     </button>
 
     <div id="err"></div>
+
   </div>
 
 
-  <!-- ADMIN -->
+  <!-- MAIN -->
   <div id="main" hidden>
 
-    <h1>🛠 Crash <span>Admin</span></h1>
+    <h1>
+      🛠 Crash <span>Admin</span>
+    </h1>
+
 
     <!-- STATS -->
     <div class="grid">
@@ -352,12 +477,29 @@ button:disabled{
     <!-- TABS -->
     <div class="tabs">
 
-      <button id="playersTab" class="on">
+      <button
+        id="playersTab"
+        class="on"
+      >
         👥 Players
       </button>
 
-      <button id="financeTab">
+      <button
+        id="financeTab"
+      >
         💰 Finance
+      </button>
+
+      <button
+        id="testTab"
+      >
+        🧪 Test
+      </button>
+
+      <button
+        id="historyTab"
+      >
+        📜 History
       </button>
 
     </div>
@@ -371,43 +513,189 @@ button:disabled{
         placeholder="Search name, ID or Telegram @username"
       >
 
-      <div class="list" id="list"></div>
+      <div
+        class="list"
+        id="list"
+      ></div>
 
       <p class="note">
-        Player balances shown here are real stored balances from the server.
-        The old Restore Coins action is not used in real-money mode.
+        Each player has a permanent ID shown under their name.
+        Telegram details appear only when the game is opened inside
+        your verified Telegram mini app.
       </p>
 
     </section>
 
 
     <!-- FINANCE -->
-    <section id="financeSection" hidden>
+    <section
+      id="financeSection"
+      hidden
+    >
 
       <div class="card">
 
         <h3 class="sectionTitle">
-          💳 Transactions
+          💰 Finance
         </h3>
 
-        <div class="list" id="transactions"></div>
+        <button
+          id="refreshFinance"
+          style="width:100%;margin-bottom:10px"
+        >
+          🔄 REFRESH FINANCE
+        </button>
+
+        <h4>
+          💳 Transactions
+        </h4>
+
+        <div
+          id="transactions"
+          class="tableWrap"
+        >
+          <div class="empty">
+            Loading...
+          </div>
+        </div>
 
       </div>
 
 
-      <div class="card" style="margin-top:10px">
+      <div class="card">
 
         <h3 class="sectionTitle">
-          💸 Withdrawals
+          🏦 Withdrawals
         </h3>
 
-        <div class="list" id="withdrawals"></div>
+        <div
+          id="withdrawals"
+          class="tableWrap"
+        >
+          <div class="empty">
+            Loading...
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- TEST / SIMULATION -->
+    <section
+      id="testSection"
+      hidden
+    >
+
+      <div class="card">
+
+        <h3 class="sectionTitle">
+          🧪 Crash Test / Simulation
+        </h3>
+
+        <p class="note">
+          Enter as many test multipliers as you want.
+          These values are simulation-only and do not control
+          the real-money game.
+        </p>
+
+        <textarea
+          id="testValues"
+          placeholder="Example:
+2.56
+200.00
+15.60
+56.70
+1.42
+8.35
+3.20
+10.50"
+        ></textarea>
+
+        <div class="testButtons">
+
+          <button
+            id="runTest"
+            class="testRun"
+          >
+            ▶️ RUN TEST
+          </button>
+
+          <button
+            id="clearTest"
+            class="testClear"
+          >
+            🗑️ CLEAR
+          </button>
+
+        </div>
+
+
+        <div class="testDisplay">
+
+          <div
+            id="testMultiplier"
+            class="testMultiplier"
+          >
+            —
+          </div>
+
+          <div
+            id="testStatus"
+            class="testStatus"
+          >
+            Ready for simulation
+          </div>
+
+        </div>
+
+
+        <div
+          id="testResults"
+          class="historyGrid"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- CRASH HISTORY -->
+    <section
+      id="historySection"
+      hidden
+    >
+
+      <div class="card">
+
+        <h3 class="sectionTitle">
+          📜 Completed Crash History
+        </h3>
+
+        <p class="note">
+          These are completed rounds returned by the server's
+          crash-history endpoint.
+        </p>
+
+        <button
+          id="refreshHistory"
+          style="width:100%;margin-bottom:10px"
+        >
+          🔄 REFRESH HISTORY
+        </button>
+
+        <div
+          id="historyResults"
+          class="historyGrid"
+        ></div>
 
       </div>
 
     </section>
 
   </div>
+
 </div>
 
 
@@ -415,33 +703,18 @@ button:disabled{
 
 const $=id=>document.getElementById(id);
 
-const esc=t=>String(t==null?'':t)
-  .replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const esc=t=>
+  String(t==null?'':t)
+    .replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 
-const fmt=n=>Number(n||0)
-  .toLocaleString(undefined,{maximumFractionDigits:2});
-
-const dateFmt=t=>{
-  if(!t)return '—';
-
-  try{
-    return new Date(t).toLocaleString();
-  }catch(e){
-    return '—';
-  }
-};
-
-const statusClass=s=>{
-  return String(s||'pending')
-    .toLowerCase()
-    .replace(/[^a-z]/g,'');
-};
+const fmt=n=>
+  Number(n||0).toLocaleString(undefined,{
+    maximumFractionDigits:2
+  });
 
 let key=null;
 let data=null;
-let finance=null;
 let timer=null;
-
 let activeTab='players';
 
 try{
@@ -453,26 +726,23 @@ try{
 
 async function call(path,body){
 
-  const r=await fetch('/admin/api/'+path,{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json'
-    },
-    body:JSON.stringify(
-      Object.assign(
-        {key},
-        body||{}
+  const r=await fetch(
+    '/admin/api/'+path,
+    {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify(
+        Object.assign(
+          {key},
+          body||{}
+        )
       )
-    )
-  });
+    }
+  );
 
-  const j=await r.json();
-
-  if(!r.ok || !j.ok){
-    throw new Error(j.error||'Request failed');
-  }
-
-  return j;
+  return r.json();
 }
 
 
@@ -484,22 +754,35 @@ function ago(t){
 
   const s=Math.max(
     0,
-    Math.round((Date.now()-t)/1000)
+    Math.round(
+      (Date.now()-t)/1000
+    )
   );
 
-  if(s<60)return s+'s ago';
-
-  if(s<3600)return Math.round(s/60)+' min ago';
-
-  if(s<86400)return Math.round(s/3600)+' h ago';
-
-  return Math.round(s/86400)+' d ago';
+  return s<60
+    ?s+'s ago'
+    :s<3600
+      ?Math.round(s/60)+' min ago'
+      :s<86400
+        ?Math.round(s/3600)+' h ago'
+        :Math.round(s/86400)+' d ago';
 }
 
 
-/* PLAYER RENDER */
+function dateFmt(t){
 
-function renderPlayers(){
+  const d=new Date(t);
+
+  if(Number.isNaN(d.getTime()))
+    return String(t);
+
+  return d.toLocaleString();
+}
+
+
+/* PLAYERS */
+
+function render(){
 
   if(!data)return;
 
@@ -513,403 +796,186 @@ function renderPlayers(){
     over:'Crashed'
   }[data.round.phase]||'—';
 
-  $('rid').textContent='Round #'+data.round.id;
+  $('rid').textContent=
+    'Round #'+data.round.id;
 
-  const q=$('q').value.trim().toLowerCase();
 
-  const rows=data.players
-    .filter(p=>{
+  const q=$('q')
+    .value
+    .trim()
+    .toLowerCase();
 
-      const tg=p.tg
-        ?(
-          (p.tg.username||'')+' '+
-          (p.tg.name||'')+' '+
-          (p.tg.id||'')
-        )
-        :'';
 
-      return !q ||
+  const rows=
+    data.players
+      .filter(p=>
+        !q ||
         [
           p.name,
           p.id,
-          tg
+          p.tg&&p.tg.username,
+          p.tg&&p.tg.name
         ]
         .join(' ')
         .toLowerCase()
-        .includes(q);
-
-    })
-    .sort(
-      (a,b)=>
-        (b.online-a.online)||
-        (b.seen-a.seen)
-    );
-
-
-  $('list').innerHTML=rows.length
-    ?rows.map(p=>{
-
-      const bet=p.bet;
-
-      return `
-        <div class="card p">
-
-          <div class="av">
-            ${esc((p.name||'?')[0].toUpperCase())}
-          </div>
-
-          <div>
-
-            <b>
-              <span class="dot${p.online?' on':''}"></span>
-              ${esc(p.name)}
-            </b>
-
-            <small>
-
-              ID ${esc(p.id)}
-
-              ${
-                p.tg
-                ?
-                ' · TG '+
-                esc(
-                  p.tg.username
-                  ?'@'+p.tg.username
-                  :p.tg.id
-                )+
-                (
-                  p.tg.name
-                  ?' ('+esc(p.tg.name)+')'
-                  :''
-                )
-                :''
-              }
-
-              <br>
-
-              ${
-                p.online
-                ?'Online now'
-                :'Last seen '+ago(p.seen)
-              }
-
-              · joined ${ago(p.first)}
-
-              <br>
-
-              Rounds ${p.rounds}
-              · wins ${p.wins}
-              · best ${
-                p.best
-                ?p.best.toFixed(2)+'x'
-                :'—'
-              }
-
-              ${
-                bet
-                ?
-                `
-                <br>
-                Bet 🪙 ${fmt(bet.amt)}
-                ${
-                  bet.auto
-                  ?' · auto '+bet.auto+'x'
-                  :''
-                }
-                ${
-                  bet.at
-                  ?' · cashed at '+bet.at.toFixed(2)+'x'
-                  :''
-                }
-                `
-                :''
-              }
-
-              ${
-                p.bonusAvailable!==undefined
-                ?
-                `
-                <br>
-                Bonus:
-                ${
-                  p.bonusUsed
-                  ?'Used'
-                  :p.bonusAvailable
-                  ?'Available'
-                  :'—'
-                }
-                `
-                :''
-              }
-
-            </small>
-
-          </div>
+        .includes(q)
+      )
+      .sort(
+        (a,b)=>
+          (b.online-a.online)||
+          ((b.seen||0)-(a.seen||0))
+      );
 
 
-          <div class="num">
-
-            <strong>
-              🪙 ${fmt(p.bal)}
-            </strong>
-
-            <span class="${p.pnl>=0?'win':'lose'}">
-              ${p.pnl>=0?'+':''}${fmt(p.pnl)}
-            </span>
-
-          </div>
-
-        </div>
-      `;
-
-    }).join('')
-
-    :
-    '<div class="card empty">No players match.</div>';
-}
-
-
-/* FINANCE RENDER */
-
-function renderFinance(){
-
-  if(!finance)return;
-
-
-  const transactions=
-    Array.isArray(finance.transactions)
-    ?finance.transactions
-    :[];
-
-
-  const withdrawals=
-    Array.isArray(finance.withdrawals)
-    ?finance.withdrawals
-    :[];
-
-
-  /* TRANSACTIONS */
-
-  $('transactions').innerHTML=
-
-    transactions.length
+  $('list').innerHTML=
+    rows.length
 
     ?
 
-    transactions.map(x=>{
+    rows.map(p=>`
 
-      const amount=Number(x.amount||0);
+      <div class="card p">
 
-      return `
-        <div class="card">
+        <div class="av">
+          ${esc(
+            (p.name||'?')[0]
+              .toUpperCase()
+          )}
+        </div>
 
-          <div class="tx">
+        <div>
 
-            <div>
+          <b>
+            <span
+              class="dot${p.online?' on':''}"
+            ></span>
 
-              <strong>
-                ${
-                  x.type==='deposit'
-                  ?'💳 Deposit'
-                  :'🧾 '+esc(x.type||'Transaction')
-                }
-              </strong>
+            ${esc(p.name||'Unknown')}
+          </b>
 
-              <small>
-                Ref:
-                ${esc(x.reference||x.id||'—')}
-              </small>
+          <small>
 
-              <small>
-                ${dateFmt(x.createdAt||x.at)}
-              </small>
+            ID ${esc(p.id)}
 
-            </div>
+            ${
+              p.tg
+              ?
+              ' · TG '+
+              esc(
+                p.tg.username
+                ?
+                '@'+p.tg.username
+                :
+                p.tg.id
+              )+
+              (
+                p.tg.name
+                ?
+                ' ('+
+                esc(p.tg.name)+
+                ')'
+                :
+                ''
+              )
+              :
+              ''
+            }
 
-            <div style="text-align:right">
+            <br>
 
-              <strong class="money">
-                ₦${fmt(amount)}
-              </strong>
+            ${
+              p.online
+              ?
+              'Online now'
+              :
+              'Last seen '+ago(p.seen)
+            }
 
-              <small>
-                ${esc(x.status||'pending')}
-              </small>
+            · joined ${ago(p.first)}
 
-            </div>
+            <br>
 
-          </div>
+            Rounds ${p.rounds}
+            · wins ${p.wins}
+            · best ${
+              p.best
+              ?
+              p.best.toFixed(2)+'x'
+              :
+              '—'
+            }
+
+            ${
+              p.bet
+              ?
+              '<br>Bet 🪙 '+
+              fmt(p.bet.amt)+
+              (
+                p.bet.auto
+                ?
+                ' (auto '+
+                p.bet.auto+
+                'x)'
+                :
+                ''
+              )+
+              (
+                p.bet.at
+                ?
+                ' · cashed at '+
+                p.bet.at.toFixed(2)+
+                'x'
+                :
+                ''
+              )
+              :
+              ''
+            }
+
+          </small>
 
         </div>
-      `;
 
-    }).join('')
+
+        <div class="num">
+
+          <strong>
+            🪙 ${fmt(p.bal)}
+          </strong>
+
+          <span
+            class="${p.pnl>=0?'win':'lose'}"
+          >
+            ${p.pnl>=0?'+':''}${fmt(p.pnl)}
+          </span>
+
+          <br>
+
+          <button
+            data-id="${esc(p.id)}"
+          >
+            Restore
+          </button>
+
+        </div>
+
+      </div>
+
+    `).join('')
 
     :
 
-    '<div class="card empty">No transactions yet.</div>';
-
-
-  /* WITHDRAWALS */
-
-  $('withdrawals').innerHTML=
-
-    withdrawals.length
-
-    ?
-
-    withdrawals.map(w=>{
-
-      const amount=Number(w.amount||0);
-
-      const status=
-        String(w.status||'pending').toLowerCase();
-
-      const player=
-        data&&data.players
-        ?data.players.find(p=>{
-            return p.id===w.playerId ||
-                   p.id===w.id ||
-                   p.token===w.token;
-          })
-        :null;
-
-      const playerName=
-        player
-        ?player.name
-        :(
-          w.name||
-          w.playerName||
-          'Player'
-        );
-
-
-      return `
-        <div class="card">
-
-          <div class="tx">
-
-            <div>
-
-              <strong>
-                💸 ${esc(playerName)}
-              </strong>
-
-              <small>
-                ${esc(w.bankName||w.bank||'Bank')}
-                · ${esc(w.accountNumber||'')}
-              </small>
-
-              <small>
-                ${
-                  w.accountName
-                  ?esc(w.accountName)
-                  :''
-                }
-              </small>
-
-              <small>
-                ID: ${esc(w.id||'—')}
-              </small>
-
-              <small>
-                ${dateFmt(w.createdAt||w.createdAt)}
-              </small>
-
-            </div>
-
-            <div style="text-align:right">
-
-              <strong class="money">
-                ₦${fmt(amount)}
-              </strong>
-
-              <span class="status ${statusClass(status)}">
-                ${esc(status)}
-              </span>
-
-            </div>
-
-          </div>
-
-
-          ${
-            status==='pending'
-
-            ?
-
-            `
-              <div class="actions">
-
-                <button
-                  class="approve"
-                  data-action="approve"
-                  data-id="${esc(w.id)}"
-                >
-                  ✅ APPROVE
-                </button>
-
-                <button
-                  class="reject"
-                  data-action="reject"
-                  data-id="${esc(w.id)}"
-                >
-                  ❌ REJECT
-                </button>
-
-              </div>
-
-              <div class="reason" hidden id="reason-${esc(w.id)}">
-                <input
-                  id="reasonInput-${esc(w.id)}"
-                  placeholder="Reason for rejection"
-                >
-              </div>
-            `
-
-            :''
-          }
-
-        </div>
-      `;
-
-    }).join('')
-
-    :
-
-    '<div class="card empty">No withdrawals yet.</div>';
+    `
+      <div
+        class="card empty"
+      >
+        No players match.
+      </div>
+    `;
 }
 
 
-/* LOAD FINANCE */
-
-async function loadFinance(){
-
-  try{
-
-    finance=await call('financials');
-
-    renderFinance();
-
-  }catch(e){
-
-    $('transactions').innerHTML=
-      '<div class="card empty">'+
-      esc(e.message)+
-      '</div>';
-
-    $('withdrawals').innerHTML=
-      '<div class="card empty">'+
-      esc(e.message)+
-      '</div>';
-
-  }
-
-}
-
-
-/* POLL STATE */
+/* POLLING */
 
 async function poll(){
 
@@ -917,13 +983,12 @@ async function poll(){
 
     const j=await call('state');
 
+    if(!j.ok)
+      throw new Error(j.error);
+
     data=j;
 
-    renderPlayers();
-
-    if(activeTab==='finance'){
-      await loadFinance();
-    }
+    render();
 
   }catch(e){
 
@@ -949,13 +1014,24 @@ async function open(){
 
   if(!key){
 
-    $('err').textContent='Enter your admin key.';
+    $('err').textContent=
+      'Enter admin key';
+
     return;
   }
 
   try{
 
     const j=await call('state');
+
+    if(!j.ok){
+
+      $('err').textContent=
+        j.error||
+        'Wrong admin key';
+
+      return;
+    }
 
     try{
       localStorage.setItem(
@@ -969,7 +1045,7 @@ async function open(){
 
     data=j;
 
-    renderPlayers();
+    render();
 
     clearInterval(timer);
 
@@ -982,170 +1058,840 @@ async function open(){
 
     $('err').textContent=
       e.message||
-      'Wrong admin key';
+      'Could not connect';
 
   }
+
 }
 
 
-/* TABS */
+/* TAB HELPER */
 
-$('playersTab').onclick=()=>{
+function setTabs(tab){
 
-  activeTab='players';
+  activeTab=tab;
 
-  $('playersTab').classList.add('on');
-  $('financeTab').classList.remove('on');
+  $('playersTab').classList.toggle(
+    'on',
+    tab==='players'
+  );
 
-  $('playersSection').hidden=false;
-  $('financeSection').hidden=true;
+  $('financeTab').classList.toggle(
+    'on',
+    tab==='finance'
+  );
+
+  $('testTab').classList.toggle(
+    'on',
+    tab==='test'
+  );
+
+  $('historyTab').classList.toggle(
+    'on',
+    tab==='history'
+  );
+
+
+  $('playersSection').hidden=
+    tab!=='players';
+
+  $('financeSection').hidden=
+    tab!=='finance';
+
+  $('testSection').hidden=
+    tab!=='test';
+
+  $('historySection').hidden=
+    tab!=='history';
+
+}
+
+
+/* FINANCE */
+
+async function loadFinance(){
+
+  const tx=$('transactions');
+  const wd=$('withdrawals');
+
+  tx.innerHTML=
+    '<div class="empty">Loading...</div>';
+
+  wd.innerHTML=
+    '<div class="empty">Loading...</div>';
+
+  try{
+
+    const j=await call('financials');
+
+    if(!j.ok)
+      throw new Error(
+        j.error||
+        'Could not load finance'
+      );
+
+
+    const transactions=
+      Array.isArray(j.transactions)
+      ?
+      j.transactions
+      :
+      [];
+
+
+    const withdrawals=
+      Array.isArray(j.withdrawals)
+      ?
+      j.withdrawals
+      :
+      [];
+
+
+    tx.innerHTML=
+      transactions.length
+
+      ?
+
+      `
+      <table>
+
+        <thead>
+          <tr>
+            <th>Reference</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          ${
+            transactions.map(x=>`
+
+              <tr>
+
+                <td>
+                  ${esc(
+                    x.reference||
+                    x.id||
+                    '—'
+                  )}
+                </td>
+
+                <td>
+                  ₦${fmt(
+                    x.amount||
+                    x.nairaAmount||
+                    0
+                  )}
+                </td>
+
+                <td>
+                  <span
+                    class="status ${
+                      String(
+                        x.status||
+                        'pending'
+                      ).toLowerCase()
+                    }"
+                  >
+                    ${esc(
+                      x.status||
+                      'pending'
+                    )}
+                  </span>
+                </td>
+
+                <td>
+                  ${x.createdAt
+                    ?
+                    esc(
+                      dateFmt(x.createdAt)
+                    )
+                    :
+                    '—'
+                  }
+                </td>
+
+              </tr>
+
+            `).join('')
+          }
+
+        </tbody>
+
+      </table>
+      `
+
+      :
+
+      '<div class="empty">No transactions found.</div>';
+
+
+    wd.innerHTML=
+      withdrawals.length
+
+      ?
+
+      `
+      <table>
+
+        <thead>
+
+          <tr>
+            <th>Player</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          ${
+            withdrawals.map(x=>`
+
+              <tr>
+
+                <td>
+
+                  ${esc(
+                    x.accountName||
+                    x.name||
+                    x.id||
+                    'Unknown'
+                  )}
+
+                  <br>
+
+                  <small>
+                    ${esc(
+                      x.accountNumber||
+                      ''
+                    )}
+                  </small>
+
+                </td>
+
+                <td>
+                  ₦${fmt(x.amount)}
+                </td>
+
+                <td>
+
+                  <span
+                    class="status ${
+                      String(
+                        x.status||
+                        'pending'
+                      ).toLowerCase()
+                    }"
+                  >
+                    ${esc(
+                      x.status||
+                      'pending'
+                    )}
+                  </span>
+
+                </td>
+
+                <td>
+
+                  ${
+                    x.status==='pending'
+
+                    ?
+
+                    `
+                    <div class="financeButtons">
+
+                      <button
+                        class="approve"
+                        data-approve="${esc(x.id)}"
+                      >
+                        APPROVE
+                      </button>
+
+                      <button
+                        class="reject"
+                        data-reject="${esc(x.id)}"
+                      >
+                        REJECT
+                      </button>
+
+                    </div>
+                    `
+
+                    :
+
+                    '—'
+                  }
+
+                </td>
+
+              </tr>
+
+            `).join('')
+          }
+
+        </tbody>
+
+      </table>
+      `
+
+      :
+
+      '<div class="empty">No withdrawals found.</div>';
+
+  }catch(e){
+
+    tx.innerHTML=
+      '<div class="empty">'+
+      esc(e.message)+
+      '</div>';
+
+    wd.innerHTML=
+      '<div class="empty">'+
+      esc(e.message)+
+      '</div>';
+
+  }
+
+}
+
+
+/* TEST / SIMULATION */
+
+let testRunning=false;
+let testTimer=null;
+
+
+function parseTestValues(){
+
+  const raw=
+    $('testValues').value;
+
+
+  return raw
+    .split(/[\s,]+/)
+    .map(x=>Number(x.trim()))
+    .filter(x=>
+      Number.isFinite(x) &&
+      x>=1.01 &&
+      x<=1000
+    );
+
+}
+
+
+function renderTestResults(values){
+
+  $('testResults').innerHTML=
+
+    values.length
+
+    ?
+
+    values.map((v,i)=>`
+
+      <div class="historyItem">
+
+        ${v.toFixed(2)}x
+
+        <small>
+          Test ${i+1}
+        </small>
+
+      </div>
+
+    `).join('')
+
+    :
+
+    `
+      <div
+        class="card empty"
+        style="grid-column:1/-1"
+      >
+        No valid test values.
+      </div>
+    `;
+
+}
+
+
+function runTest(){
+
+  if(testRunning)
+    return;
+
+
+  const values=
+    parseTestValues();
+
+
+  if(!values.length){
+
+    $('testStatus').textContent=
+      'Enter valid multipliers first.';
+
+    $('testMultiplier').textContent=
+      '—';
+
+    return;
+  }
+
+
+  testRunning=true;
+
+  $('runTest').disabled=true;
+
+  $('testStatus').textContent=
+    'Running simulation...';
+
+
+  renderTestResults(values);
+
+
+  let i=0;
+
+
+  const next=()=>{
+
+    if(i>=values.length){
+
+      testRunning=false;
+
+      $('runTest').disabled=false;
+
+      $('testStatus').textContent=
+        'Simulation complete';
+
+      testTimer=null;
+
+      return;
+    }
+
+
+    const value=
+      values[i++];
+
+
+    $('testMultiplier').textContent=
+      value.toFixed(2)+'x';
+
+
+    $('testStatus').textContent=
+      'Simulation '+
+      i+
+      ' of '+
+      values.length;
+
+
+    testTimer=setTimeout(
+      next,
+      900
+    );
+
+  };
+
+
+  next();
+
+}
+
+
+function clearTest(){
+
+  if(testTimer){
+
+    clearTimeout(testTimer);
+
+    testTimer=null;
+
+  }
+
+
+  testRunning=false;
+
+  $('runTest').disabled=false;
+
+  $('testValues').value='';
+
+  $('testResults').innerHTML='';
+
+  $('testMultiplier').textContent='—';
+
+  $('testStatus').textContent=
+    'Ready for simulation';
+
+}
+
+
+/* CRASH HISTORY */
+
+async function loadCrashHistory(){
+
+  const box=
+    $('historyResults');
+
+
+  box.innerHTML=
+    `
+      <div
+        class="card empty"
+        style="grid-column:1/-1"
+      >
+        Loading history...
+      </div>
+    `;
+
+
+  try{
+
+    const r=
+      await fetch(
+        '/api/history'
+      );
+
+
+    if(!r.ok)
+      throw new Error(
+        'Could not load history'
+      );
+
+
+    const history=
+      await r.json();
+
+
+    const rows=
+      Array.isArray(history)
+      ?
+      history
+      :
+      [];
+
+
+    box.innerHTML=
+
+      rows.length
+
+      ?
+
+      rows.map((x,i)=>{
+
+        let value=null;
+        let time=null;
+
+
+        if(typeof x==='number'){
+
+          value=x;
+
+        }else if(typeof x==='string'){
+
+          value=Number(x);
+
+        }else if(x){
+
+          value=
+            Number(
+              x.crash||
+              x.multiplier||
+              x.value||
+              x.point
+            );
+
+
+          time=
+            x.at||
+            x.createdAt||
+            x.time||
+            x.timestamp;
+
+        }
+
+
+        return `
+
+          <div class="historyItem">
+
+            ${
+              Number.isFinite(value)
+              ?
+              value.toFixed(2)+'x'
+              :
+              '—'
+            }
+
+            <small>
+
+              Round ${i+1}
+
+              ${
+                time
+                ?
+                '<br>'+
+                esc(
+                  dateFmt(time)
+                )
+                :
+                ''
+              }
+
+            </small>
+
+          </div>
+
+        `;
+
+      }).join('')
+
+      :
+
+      `
+        <div
+          class="card empty"
+          style="grid-column:1/-1"
+        >
+          No crash history found.
+        </div>
+      `;
+
+
+  }catch(e){
+
+    box.innerHTML=
+      `
+        <div
+          class="card empty"
+          style="grid-column:1/-1"
+        >
+          ${esc(e.message)}
+        </div>
+      `;
+
+  }
+
+}
+
+
+/* BUTTONS */
+
+$('enter').onclick=open;
+
+$('key').onkeydown=e=>{
+
+  if(e.key==='Enter')
+    open();
 
 };
 
 
+$('q').oninput=render;
+
+
+/* PLAYER RESTORE */
+
+$('list').onclick=async e=>{
+
+  const b=
+    e.target.closest('button');
+
+  if(!b)
+    return;
+
+
+  b.disabled=true;
+
+
+  try{
+
+    await call(
+      'restore',
+      {
+        id:b.dataset.id
+      }
+    );
+
+  }catch(err){}
+
+
+  poll();
+
+};
+
+
+/* PLAYERS TAB */
+
+$('playersTab').onclick=()=>{
+
+  setTabs('players');
+
+};
+
+
+/* FINANCE TAB */
+
 $('financeTab').onclick=async()=>{
 
-  activeTab='finance';
-
-  $('financeTab').classList.add('on');
-  $('playersTab').classList.remove('on');
-
-  $('playersSection').hidden=true;
-  $('financeSection').hidden=false;
+  setTabs('finance');
 
   await loadFinance();
 
 };
 
 
-/* SEARCH */
-
-$('q').oninput=renderPlayers;
-
-
-/* FINANCE BUTTONS */
-
-$('withdrawals').onclick=async e=>{
-
-  const b=e.target.closest('button');
-
-  if(!b)return;
-
-  const id=b.dataset.id;
-
-  if(!id)return;
+$('refreshFinance').onclick=
+  loadFinance;
 
 
-  if(b.dataset.action==='approve'){
+/* TEST TAB */
 
-    if(
-      !confirm(
-        'Approve this withdrawal and send the Paystack transfer?'
-      )
-    )return;
+$('testTab').onclick=()=>{
 
-    b.disabled=true;
+  setTabs('test');
 
-    try{
+};
 
-      await call(
-        'approveWithdrawal',
-        {id}
+
+/* HISTORY TAB */
+
+$('historyTab').onclick=async()=>{
+
+  setTabs('history');
+
+  await loadCrashHistory();
+
+};
+
+
+$('refreshHistory').onclick=
+  loadCrashHistory;
+
+
+/* TEST BUTTONS */
+
+$('runTest').onclick=
+  runTest;
+
+
+$('clearTest').onclick=
+  clearTest;
+
+
+/* WITHDRAWAL ACTIONS */
+
+$('withdrawals').onclick=
+  async e=>{
+
+    const approve=
+      e.target.closest(
+        '[data-approve]'
       );
 
-      await loadFinance();
-      await poll();
-
-    }catch(err){
-
-      alert(err.message);
-
-      b.disabled=false;
-
-    }
-
-    return;
-  }
+    const reject=
+      e.target.closest(
+        '[data-reject]'
+      );
 
 
-  if(b.dataset.action==='reject'){
+    if(approve){
 
-    const box=$('reason-'+id);
+      approve.disabled=true;
 
-    if(box){
 
-      box.hidden=false;
+      try{
 
-      const input=$('reasonInput-'+id);
+        const j=
+          await call(
+            'approveWithdrawal',
+            {
+              id:
+                approve.dataset.approve
+            }
+          );
 
-      if(input){
-        input.focus();
+
+        if(!j.ok){
+
+          alert(
+            j.error||
+            'Could not approve withdrawal'
+          );
+
+        }
+
+      }catch(err){
+
+        alert(
+          err.message||
+          'Could not approve withdrawal'
+        );
+
       }
 
-      b.textContent='❌ CONFIRM REJECT';
-      b.dataset.action='confirm-reject';
+
+      await loadFinance();
 
       return;
     }
 
-  }
+
+    if(reject){
+
+      reject.disabled=true;
 
 
-  if(b.dataset.action==='confirm-reject'){
-
-    const input=$('reasonInput-'+id);
-
-    const reason=
-      input
-      ?input.value.trim()
-      :'';
+      const reason=
+        prompt(
+          'Reason for rejection:',
+          'Rejected by admin'
+        );
 
 
-    if(
-      !confirm(
-        'Reject this withdrawal and return the money to the player balance?'
-      )
-    )return;
+      try{
 
-    b.disabled=true;
+        const j=
+          await call(
+            'rejectWithdrawal',
+            {
+              id:
+                reject.dataset.reject,
+              reason:
+                reason||
+                'Rejected by admin'
+            }
+          );
 
-    try{
 
-      await call(
-        'rejectWithdrawal',
-        {
-          id,
-          reason
+        if(!j.ok){
+
+          alert(
+            j.error||
+            'Could not reject withdrawal'
+          );
+
         }
-      );
+
+      }catch(err){
+
+        alert(
+          err.message||
+          'Could not reject withdrawal'
+        );
+
+      }
+
 
       await loadFinance();
-      await poll();
-
-    }catch(err){
-
-      alert(err.message);
-
-      b.disabled=false;
 
     }
 
-  }
-
-};
-
-
-/* ENTER KEY */
-
-$('enter').onclick=open;
-
-$('key').onkeydown=e=>{
-
-  if(e.key==='Enter'){
-    open();
-  }
-
-};
+  };
 
 
 /* AUTO LOGIN */
