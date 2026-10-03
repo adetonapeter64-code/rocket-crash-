@@ -1,3412 +1,2896 @@
-// ================================================================
-// CRASH GAME 222 - SERVER.JS
-// Live crash game + wallet + Paystack + admin panel
-// ================================================================
+// Live Crash server + Paystack Test Wallet
+// Existing crash engine kept intact.
+// Run: node server.js
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-
-// ================================================================
-// CONFIG
-// ================================================================
+const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const DATA = process.env.DATA_FILE || path.join(__dirname, 'data.json');
 
-const GROWTH = 0.1;
-const EDGE = 0.99;
-const X = 2 ** 52;
+const GROWTH = 0.1, EDGE = 0.99, X = 2 ** 52, COUNT_MS = 6000, OVER_MS = 3500,
+MIN = 10, MAX = 10000, START = 1000, BONUS = 500;
 
-const COUNT_MS = 6000;
-const OVER_MS = 3500;
-
-const MIN = 10;
-const MAX = 10000;
-const START = 1000;
-const BONUS = 500;
-
-// ================================================================
-// PAYSTACK CONFIG
-// ================================================================
-
-const PAYSTACK_SECRET_KEY =
-  process.env.PAYSTACK_SECRET_KEY || '';
-
-const APP_URL =
-  process.env.APP_URL || '';
-
+// PAYSTACK TEST WALLET SETTINGS
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || '';
+const APP_URL = process.env.APP_URL || '';
 const PAYSTACK_CALLBACK_URL =
-  process.env.PAYSTACK_CALLBACK_URL ||
-  (APP_URL ? APP_URL + '/paystack/callback' : '');
+process.env.PAYSTACK_CALLBACK_URL ||
+(APP_URL ? APP_URL + '/paystack/callback' : '');
 
-const MIN_DEPOSIT =
-  Number(process.env.MIN_DEPOSIT || 100);
-
-const MAX_DEPOSIT =
-  Number(process.env.MAX_DEPOSIT || 1000000);
-
-const MIN_WITHDRAWAL =
-  Number(process.env.MIN_WITHDRAWAL || 100);
-
-const MAX_WITHDRAWAL =
-  Number(process.env.MAX_WITHDRAWAL || 1000000);
+const MIN_DEPOSIT = Number(process.env.MIN_DEPOSIT || 100);
+const MAX_DEPOSIT = Number(process.env.MAX_DEPOSIT || 1000000);
+const MIN_WITHDRAWAL = Number(process.env.MIN_WITHDRAWAL || 100);
+const MAX_WITHDRAWAL = Number(process.env.MAX_WITHDRAWAL || 1000000);
 
 const REQUIRE_WITHDRAWAL_APPROVAL =
-  String(
-    process.env.REQUIRE_WITHDRAWAL_APPROVAL || 'true'
-  ) !== 'false';
-
-// ================================================================
-// DATABASE
-// ================================================================
+String(process.env.REQUIRE_WITHDRAWAL_APPROVAL || 'true') !== 'false';
 
 let db = {
-  players: {},
-  history: [],
-  nonce: 0,
-  roundId: 0,
-  transactions: [],
-  withdrawals: []
+players: {},
+history: [],
+nonce: 0,
+roundId: 0,
+transactions: [],
+withdrawals: []
 };
 
 try {
-  if (fs.existsSync(DATA)) {
-    const loaded = JSON.parse(
-      fs.readFileSync(DATA, 'utf8')
-    );
+db = Object.assign(db, JSON.parse(fs.readFileSync(DATA, 'utf8')));
+} catch (e) {}
 
-    if (loaded && typeof loaded === 'object') {
-      db = {
-        ...db,
-        ...loaded
-      };
-    }
-  }
-} catch (e) {
-  console.error('Database load error:', e.message);
+if (!Array.isArray(db.transactions)) db.transactions = [];
+if (!Array.isArray(db.withdrawals)) db.withdrawals = [];
+
+for (const p of Object.values(db.players)) {
+if (p.bet) {
+p.bal += p.bet;
+p.bet = 0;
 }
-
-if (!Array.isArray(db.history)) {
-  db.history = [];
 }
-
-if (!Array.isArray(db.transactions)) {
-  db.transactions = [];
-}
-
-if (!Array.isArray(db.withdrawals)) {
-  db.withdrawals = [];
-}
-
-if (!db.players || typeof db.players !== 'object') {
-  db.players = {};
-}
-
-// ================================================================
-// REFUND OPEN BETS AFTER RESTART
-// ================================================================
-
-for (const id of Object.keys(db.players)) {
-  const p = db.players[id];
-
-  if (p && Number(p.bet) > 0) {
-    p.balance =
-      Number(p.balance || 0) +
-      Number(p.bet || 0);
-
-    p.bet = 0;
-    p.at = 0;
-    p.bonusBet = false;
-  }
-}
-
-// ================================================================
-// SAVE SYSTEM
-// ================================================================
 
 let dirty = false;
 
-function save() {
-  dirty = true;
-}
+const save = () => {
+dirty = true;
+};
 
 setInterval(() => {
-  if (!dirty) return;
-
-  try {
-    const tmp = DATA + '.tmp';
-
-    fs.writeFileSync(
-      tmp,
-      JSON.stringify(db, null, 2)
-    );
-
-    fs.renameSync(tmp, DATA);
-
-    dirty = false;
-  } catch (e) {
-    console.error('Database save error:', e.message);
-  }
+if (dirty) {
+dirty = false;
+fs.writeFile(DATA, JSON.stringify(db), () => {});
+}
 }, 1000);
 
-// ================================================================
-// ADMIN KEY
-// ================================================================
+const ADMIN_KEY =
+process.env.ADMIN_KEY ||
+db.adminKey ||
+(db.adminKey = crypto.randomBytes(9).toString('hex'));
 
-let ADMIN_KEY =
-  process.env.ADMIN_KEY ||
-  db.adminKey ||
-  crypto.randomBytes(24).toString('hex');
-
-if (!db.adminKey) {
-  db.adminKey = ADMIN_KEY;
-  save();
-}
-
-console.log('ADMIN KEY:', ADMIN_KEY);
-
-// ================================================================
-// TELEGRAM
-// ================================================================
-
-const BOT_TOKEN =
-  process.env.BOT_TOKEN || '';
-
-// ================================================================
-// HELPERS
-// ================================================================
+const BOT_TOKEN = process.env.BOT_TOKEN || '';
 
 const sha = s =>
-  crypto
-    .createHash('sha256')
-    .update(String(s))
-    .digest('hex');
+crypto.createHash('sha256').update(s).digest('hex');
 
-function crashFrom(h) {
-  const r =
-    parseInt(h.slice(0, 13), 16);
+const crashFrom = h => {
+const r = parseInt(h.slice(0, 13), 16);
+return Math.min(
+1000,
+Math.max(
+1,
+Math.floor(100 * EDGE * X / (X - r)) / 100
+)
+);
+};
 
-  return Math.min(
-    1000,
-    Math.max(
-      1,
-      Math.floor(
-        100 *
-        EDGE *
-        X /
-        (X - r)
-      ) / 100
-    )
-  );
-}
+const r2 = n => Math.round(n * 100) / 100;
 
-function r2(n) {
-  return Math.round(
-    Number(n || 0) * 100
-  ) / 100;
-}
+const addLog = (p, l) => {
+p.log.unshift(l);
+p.log.length = Math.min(p.log.length, 8);
+};
 
-function addLog(type, data = {}) {
-  console.log(
-    `[${new Date().toISOString()}]`,
-    type,
-    data
-  );
-}
-
-function json(res, status, data) {
-  const body = JSON.stringify(data);
-
-  res.writeHead(status, {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'no-store',
-    'Access-Control-Allow-Origin': '*'
-  });
-
-  res.end(body);
-}
-
-function out(status, data) {
-  return {
-    status,
-    data
-  };
-}
-
-// ================================================================
+// =====================================================
 // TELEGRAM USER VERIFICATION
-// ================================================================
+// =====================================================
 
 function tgUser(initData) {
-  if (!initData || !BOT_TOKEN) {
-    return null;
-  }
+if (!BOT_TOKEN || !initData) return null;
 
-  try {
-    const params =
-      new URLSearchParams(initData);
+try {
+const q = new URLSearchParams(initData);
+const hash = q.get('hash');
 
-    const hash =
-      params.get('hash');
+q.delete('hash');  
 
-    if (!hash) return null;
+const str = [...q.entries()]  
+  .map(([k, v]) => k + '=' + v)  
+  .sort()  
+  .join('\n');  
 
-    params.delete('hash');
+const secret = crypto  
+  .createHmac('sha256', 'WebAppData')  
+  .update(BOT_TOKEN)  
+  .digest();  
 
-    const dataCheckString =
-      [...params.entries()]
-        .sort(([a], [b]) =>
-          a.localeCompare(b)
-        )
-        .map(([k, v]) =>
-          `${k}=${v}`
-        )
-        .join('\n');
+if (  
+  crypto  
+    .createHmac('sha256', secret)  
+    .update(str)  
+    .digest('hex') !== hash  
+) {  
+  return null;  
+}  
 
-    const secretKey =
-      crypto
-        .createHmac(
-          'sha256',
-          'WebAppData'
-        )
-        .update(BOT_TOKEN)
-        .digest();
+const u = JSON.parse(q.get('user') || 'null');  
 
-    const calculated =
-      crypto
-        .createHmac(
-          'sha256',
-          secretKey
-        )
-        .update(dataCheckString)
-        .digest('hex');
+return u && {  
+  id: u.id,  
+  username: u.username || '',  
+  name: [u.first_name, u.last_name]  
+    .filter(Boolean)  
+    .join(' ')  
+};
 
-    if (
-      calculated.length !==
-      hash.length
-    ) {
-      return null;
-    }
-
-    if (
-      !crypto.timingSafeEqual(
-        Buffer.from(calculated),
-        Buffer.from(hash)
-      )
-    ) {
-      return null;
-    }
-
-    const user =
-      JSON.parse(
-        params.get('user') || '{}'
-      );
-
-    return user;
-  } catch (e) {
-    return null;
-  }
+} catch (e) {
+return null;
+}
 }
 
-// ================================================================
-// PLAYER
-// ================================================================
+// =====================================================
+// WALLET SYSTEM
+// =====================================================
 
-function playerIdFromUser(user) {
-  return String(
-    user.id ||
-    user.username ||
-    user.first_name ||
-    ''
-  );
+const txId = prefix =>
+prefix +
+'' +
+Date.now().toString(36) +
+'' +
+crypto.randomBytes(4).toString('hex');
+
+function addTx(p, type, amount, status, extra = {}) {
+
+const tx = {
+id: txId(type),
+playerId: p.id,
+amount: r2(Number(amount)),
+currency: 'NGN',
+type,
+status,
+createdAt: Date.now(),
+...extra
+};
+
+db.transactions.unshift(tx);
+
+db.transactions.length =
+Math.min(db.transactions.length, 2000);
+
+return tx;
 }
-
-function getPlayer(user) {
-  const id =
-    playerIdFromUser(user);
-
-  if (!id) return null;
-
-  if (!db.players[id]) {
-    db.players[id] = {
-      id,
-      username: user.username || '',
-      firstName: user.first_name || '',
-      balance: START,
-      bonus: BONUS,
-      bet: 0,
-      at: 0,
-      bonusBet: false,
-      createdAt: Date.now(),
-      totalBets: 0,
-      totalWins: 0,
-      totalLosses: 0,
-      totalWagered: 0,
-      totalWon: 0,
-      totalWithdrawn: 0
-    };
-
-    save();
-  }
-
-  const p = db.players[id];
-
-  p.username =
-    user.username ||
-    p.username ||
-    '';
-
-  p.firstName =
-    user.first_name ||
-    p.firstName ||
-    '';
-
-  return p;
-}
-
-// ================================================================
-// TRANSACTIONS
-// ================================================================
-
-function txId(prefix = 'TX') {
-  return (
-    prefix +
-    '_' +
-    Date.now() +
-    '_' +
-    crypto
-      .randomBytes(5)
-      .toString('hex')
-  );
-}
-
-function addTx(tx) {
-  db.transactions.unshift({
-    id: tx.id || txId('TX'),
-    createdAt:
-      tx.createdAt || Date.now(),
-    ...tx
-  });
-
-  if (db.transactions.length > 500) {
-    db.transactions =
-      db.transactions.slice(0, 500);
-  }
-
-  save();
-}
-
-// ================================================================
-// FIND PLAYER
-// ================================================================
 
 function findPlayerById(id) {
-  return db.players[String(id)] || null;
+return Object.values(db.players)
+.find(p => p.id === id);
 }
 
-// ================================================================
-// HTTP REQUEST HELPER
-// ================================================================
+function jsonReq(req, limit = 10000) {
 
-function jsonReq(
-  url,
-  options = {},
-  body = null
+return new Promise((resolve, reject) => {
+
+let d = '';  
+
+req.on('data', x => {  
+
+  d += x;  
+
+  if (d.length > limit) {  
+    reject(new Error('Request too large'));  
+
+    try {  
+      req.destroy();  
+    } catch (e) {}  
+  }  
+
+});  
+
+req.on('end', () => {  
+
+  try {  
+    resolve(JSON.parse(d || '{}'));  
+  } catch (e) {  
+    resolve({});  
+  }  
+
+});  
+
+req.on('error', reject);
+
+});
+}
+
+// =====================================================
+// PAYSTACK REQUEST
+// =====================================================
+
+async function paystack(method, endpoint, body) {
+
+if (!PAYSTACK_SECRET_KEY) {
+throw new Error(
+'PAYSTACK_SECRET_KEY is not configured'
+);
+}
+
+const opts = {
+method,
+headers: {
+Authorization:
+'Bearer ' + PAYSTACK_SECRET_KEY,
+'Content-Type': 'application/json'
+}
+};
+
+if (body !== undefined) {
+opts.body = JSON.stringify(body);
+}
+
+const r = await fetch(
+'https://api.paystack.co' + endpoint,
+opts
+);
+
+const text = await r.text();
+
+let data;
+
+try {
+data = JSON.parse(text);
+} catch (e) {
+data = {
+status: false,
+message: text
+};
+}
+
+if (!r.ok || data.status === false) {
+throw new Error(
+data.message ||
+'Paystack request failed'
+);
+}
+
+return data;
+}
+
+// =====================================================
+// VERIFY DEPOSIT
+// =====================================================
+
+async function creditVerifiedDeposit(reference) {
+
+const existing =
+db.transactions.find(
+t =>
+t.reference === reference &&
+t.type === 'deposit'
+);
+
+if (
+existing &&
+existing.status === 'completed'
 ) {
-  return new Promise(
-    (resolve, reject) => {
-      try {
-        const u = new URL(url);
-
-        const req =
-          require('https').request(
-            {
-              hostname: u.hostname,
-              port:
-                u.port ||
-                443,
-              path:
-                u.pathname +
-                u.search,
-              method:
-                options.method ||
-                'GET',
-              headers: {
-                ...(options.headers || {}),
-                ...(body
-                  ? {
-                      'Content-Type':
-                        'application/json',
-                      'Content-Length':
-                        Buffer.byteLength(
-                          JSON.stringify(body)
-                        )
-                    }
-                  : {})
-              }
-            },
-            res => {
-              let data = '';
-
-              res.on(
-                'data',
-                c => {
-                  data += c;
-                }
-              );
-
-              res.on(
-                'end',
-                () => {
-                  let parsed =
-                    data;
-
-                  try {
-                    parsed =
-                      JSON.parse(data);
-                  } catch (_) {}
-
-                  resolve({
-                    status:
-                      res.statusCode,
-                    data: parsed
-                  });
-                }
-              );
-            }
-          );
-
-        req.on(
-          'error',
-          reject
-        );
-
-        if (body) {
-          req.write(
-            JSON.stringify(body)
-          );
-        }
-
-        req.end();
-      } catch (e) {
-        reject(e);
-      }
-    }
-  );
+return existing;
 }
 
-// ================================================================
-// PAYSTACK
-// ================================================================
+const check = await paystack(
+'GET',
+'/transaction/verify/' +
+encodeURIComponent(reference)
+);
 
-async function paystack(
-  endpoint,
-  method = 'GET',
-  body = null
+const d = check.data;
+
+if (!d || d.status !== 'success') {
+throw new Error(
+'Payment is not successful'
+);
+}
+
+if (
+d.currency &&
+d.currency !== 'NGN'
 ) {
-  if (!PAYSTACK_SECRET_KEY) {
-    throw new Error(
-      'PAYSTACK_SECRET_KEY is not configured'
-    );
-  }
-
-  return jsonReq(
-    'https://api.paystack.co' +
-      endpoint,
-    {
-      method,
-      headers: {
-        Authorization:
-          'Bearer ' +
-          PAYSTACK_SECRET_KEY
-      }
-    },
-    body
-  );
+throw new Error(
+'Wrong payment currency'
+);
 }
 
-// ================================================================
-// CREDIT VERIFIED DEPOSIT
-// ================================================================
+const amountNaira =
+Number(d.amount) / 100;
 
-function creditVerifiedDeposit(
-  reference,
-  amount,
-  playerId,
-  extra = {}
+if (
+!(
+amountNaira >= MIN_DEPOSIT &&
+amountNaira <= MAX_DEPOSIT
+)
 ) {
-  const existing =
-    db.transactions.find(
-      t =>
-        t.type === 'deposit' &&
-        t.reference === reference
-    );
-
-  if (existing) {
-    return existing;
-  }
-
-  const p =
-    findPlayerById(playerId);
-
-  if (!p) {
-    throw new Error(
-      'Player not found'
-    );
-  }
-
-  const naira =
-    Number(amount);
-
-  if (
-    !Number.isFinite(naira) ||
-    naira <= 0
-  ) {
-    throw new Error(
-      'Invalid deposit amount'
-    );
-  }
-
-  p.balance =
-    Number(p.balance || 0) +
-    naira;
-
-  const tx = {
-    id: txId('DEP'),
-    type: 'deposit',
-    status: 'success',
-    playerId: String(playerId),
-    reference,
-    amount: naira,
-    createdAt: Date.now(),
-    ...extra
-  };
-
-  db.transactions.unshift(tx);
-
-  if (db.transactions.length > 500) {
-    db.transactions =
-      db.transactions.slice(0, 500);
-  }
-
-  save();
-
-  addLog(
-    'DEPOSIT_CREDITED',
-    {
-      playerId,
-      amount: naira,
-      reference
-    }
-  );
-
-  return tx;
+throw new Error(
+'Payment amount outside allowed range'
+);
 }
 
-// ================================================================
-// PAYSTACK TRANSFER
-// ================================================================
+const playerId =
+d.metadata &&
+d.metadata.player_id;
 
-async function createWithdrawalTransfer(
-  withdrawal
-) {
-  if (!PAYSTACK_SECRET_KEY) {
-    throw new Error(
-      'PAYSTACK_SECRET_KEY is not configured'
-    );
-  }
+const p =
+playerId
+? findPlayerById(playerId)
+: null;
 
-  const response =
-    await paystack(
-      '/transfer',
-      'POST',
-      {
-        source: 'balance',
-        amount:
-          Math.round(
-            Number(
-              withdrawal.amount
-            ) * 100
-          ),
-        recipient:
-          withdrawal.recipientCode,
-        reason:
-          withdrawal.reason ||
-          'Crash Game withdrawal'
-      }
-    );
-
-  return response;
+if (!p) {
+throw new Error(
+'Player for payment not found'
+);
 }
 
-// ================================================================
+if (existing) {
+
+existing.status = 'completed';  
+
+existing.amount =  
+  r2(amountNaira);  
+
+existing.paystackId = d.id;  
+
+existing.verifiedAt =  
+  Date.now();
+
+} else {
+
+p.bal =  
+  r2(  
+    p.bal +  
+    amountNaira  
+  );  
+
+addTx(  
+  p,  
+  'deposit',  
+  amountNaira,  
+  'completed',  
+  {  
+    reference,  
+    provider: 'paystack',  
+    paystackId: d.id,  
+    verifiedAt: Date.now()  
+  }  
+);
+
+}
+
+p.email =
+p.email ||
+(d.customer &&
+d.customer.email) ||
+'';
+
+save();
+
+broadcast();
+
+return (
+existing ||
+db.transactions[0]
+);
+}
+
+// =====================================================
+// PAYSTACK WITHDRAWAL
+// =====================================================
+
+async function createWithdrawalTransfer(w) {
+
+const p =
+findPlayerById(
+w.playerId
+);
+
+if (!p) {
+throw new Error(
+'Player not found'
+);
+}
+
+const recipient =
+await paystack(
+'POST',
+'/transferrecipient',
+{
+type: 'nuban',
+name: w.accountName,
+account_number:
+w.accountNumber,
+bank_code:
+w.bankCode,
+currency: 'NGN'
+}
+);
+
+const transfer =
+await paystack(
+'POST',
+'/transfer',
+{
+source: 'balance',
+amount:
+Math.round(
+w.amount * 100
+),
+recipient:
+recipient.data.recipient_code,
+reference:
+w.reference,
+reason:
+'Crash Game withdrawal',
+currency: 'NGN'
+}
+);
+
+w.recipientCode =
+recipient.data.recipient_code;
+
+w.transferCode =
+transfer.data &&
+transfer.data.transfer_code;
+
+w.paystackStatus =
+transfer.data &&
+transfer.data.status;
+
+w.status =
+w.paystackStatus === 'failed'
+? 'failed'
+: 'processing';
+
+w.updatedAt =
+Date.now();
+
+const tx =
+db.transactions.find(
+t =>
+t.reference ===
+w.reference
+);
+
+if (tx) {
+tx.status =
+w.status;
+
+tx.transferCode =  
+  w.transferCode;
+
+}
+
+save();
+broadcast();
+
+return w;
+}
+
+// =====================================================
 // CRASH ENGINE
-// ================================================================
+// =====================================================
 
 let R = null;
 
-// ---------------------------------------------------------------
-// CURRENT MULTIPLIER
-// ---------------------------------------------------------------
-
-function liveMultiplier() {
-  if (!R) return 1;
-
-  if (R.phase === 'count') {
-    return 1;
-  }
-
-  if (R.phase === 'over') {
-    return R.crash;
-  }
-
-  const elapsed =
-    Date.now() -
-    R.flyStart;
-
-  const m =
-    Math.exp(
-      GROWTH *
-      elapsed /
-      1000
-    );
-
-  return Math.min(
-    R.crash,
-    Math.floor(m * 100) / 100
-  );
-}
-
-// ---------------------------------------------------------------
-// START ROUND
-// ---------------------------------------------------------------
-
 function startRound() {
-  const seed =
-    crypto
-      .randomBytes(16)
-      .toString('hex');
 
-  db.nonce++;
-  db.roundId++;
+const seed =
+crypto.randomBytes(16)
+.toString('hex');
 
-  R = {
-    id: db.roundId,
+db.nonce++;
+db.roundId++;
 
-    phase: 'count',
+R = {
+id: db.roundId,
+phase: 'count',
+seed,
+nonce: db.nonce,
+commit: sha(seed),
+crash:
+crashFrom(
+sha(
+seed +
+':' +
+db.nonce
+)
+),
+countEnd:
+Date.now() + COUNT_MS,
+flyStart: 0,
+overEnd: 0,
+bets: {}
+};
 
-    seed,
-
-    nonce: db.nonce,
-
-    // Public commitment made BEFORE the result
-    commit: sha(seed),
-
-    // Crash result is generated independently
-    crash: crashFrom(
-      sha(
-        seed +
-        ':' +
-        db.nonce
-      )
-    ),
-
-    countEnd:
-      Date.now() +
-      COUNT_MS,
-
-    flyStart: 0,
-
-    overEnd: 0,
-
-    bets: {}
-  };
-
-  save();
-
-  broadcast();
+save();
+broadcast();
 }
 
-// ---------------------------------------------------------------
-// CASHOUT
-// ---------------------------------------------------------------
+function cash(t, m) {
 
-function cash(
-  t,
-  m
-) {
-  if (!R) {
-    return {
-      ok: false,
-      error: 'No round'
-    };
-  }
+const b =
+R.bets[t];
 
-  const b =
-    R.bets[t];
+const p =
+db.players[t];
 
-  if (!b) {
-    return {
-      ok: false,
-      error: 'No active bet'
-    };
-  }
+if (!b || b.at || !p)
+return;
 
-  if (b.cashed) {
-    return {
-      ok: false,
-      error: 'Already cashed'
-    };
-  }
+b.at = m;
 
-  if (
-    R.phase !== 'fly'
-  ) {
-    return {
-      ok: false,
-      error: 'Cashout unavailable'
-    };
-  }
+const win =
+r2(
+b.amt * m
+);
 
-  const p =
-    db.players[t];
+p.bal =
+r2(
+p.bal + win
+);
 
-  if (!p) {
-    return {
-      ok: false,
-      error: 'Player not found'
-    };
-  }
+p.pnl =
+r2(
+p.pnl +
+win -
+b.amt
+);
 
-  const current =
-    liveMultiplier();
+p.bet = 0;
 
-  if (
-    Number(m) < 1 ||
-    Number(m) > R.crash
-  ) {
-    return {
-      ok: false,
-      error: 'Invalid multiplier'
-    };
-  }
+p.st.r++;
+p.st.w++;
 
-  if (
-    current < Number(m)
-  ) {
-    return {
-      ok: false,
-      error: 'Multiplier not reached'
-    };
-  }
+p.st.best =
+Math.max(
+p.st.best,
+m
+);
 
-  const mult =
-    r2(
-      Math.min(
-        Number(m),
-        R.crash
-      )
-    );
+p.st.big =
+Math.max(
+p.st.big,
+r2(
+win -
+b.amt
+)
+);
 
-  const win =
-    r2(
-      Number(b.amount) *
-      mult
-    );
-
-  b.cashed = true;
-  b.cashout = mult;
-  b.win = win;
-
-  p.balance =
-    Number(p.balance || 0) +
-    win;
-
-  p.bet = 0;
-  p.at = 0;
-  p.bonusBet = false;
-
-  p.totalWins =
-    Number(p.totalWins || 0) +
-    1;
-
-  p.totalWon =
-    Number(p.totalWon || 0) +
-    win;
-
-  addTx({
-    id: txId('WIN'),
-    type: 'game_win',
-    playerId: t,
-    amount: win,
-    multiplier: mult,
-    roundId: R.id,
-    createdAt: Date.now()
-  });
-
-  save();
-
-  addLog(
-    'CASHOUT',
-    {
-      playerId: t,
-      roundId: R.id,
-      multiplier: mult,
-      win
-    }
-  );
-
-  broadcast();
-
-  return {
-    ok: true,
-    multiplier: mult,
-    win,
-    balance: p.balance
-  };
+addLog(
+p,
+{
+crash: null,
+amt: b.amt,
+at: m,
+profit:
+r2(
+win -
+b.amt
+)
 }
+);
 
-// ---------------------------------------------------------------
-// END ROUND
-// ---------------------------------------------------------------
+addTx(
+p,
+'win',
+win,
+'completed',
+{
+multiplier: m,
+roundId: R.id
+}
+);
+
+save();
+broadcast();
+}
 
 function endRound() {
-  if (!R) return;
 
-  if (R.phase === 'over') {
-    return;
-  }
+R.phase = 'over';
 
-  R.phase = 'over';
+R.overEnd =
+Date.now() +
+OVER_MS;
 
-  R.overEnd =
-    Date.now() +
-    OVER_MS;
+for (
+const [t, b]
+of Object.entries(R.bets)
+) {
 
-  // Settle unresolved bets as losses
-  for (const t of Object.keys(R.bets)) {
-    const b =
-      R.bets[t];
+const p =  
+  db.players[t];  
 
-    if (!b.cashed) {
-      const p =
-        db.players[t];
+if (!p || b.at)  
+  continue;  
 
-      if (p) {
-        p.bet = 0;
-        p.at = 0;
-        p.bonusBet = false;
+p.bet = 0;  
 
-        p.totalLosses =
-          Number(
-            p.totalLosses || 0
-          ) + 1;
+p.st.r++;  
 
-        addTx({
-          id: txId('LOSS'),
-          type: 'game_loss',
-          playerId: t,
-          amount:
-            Number(
-              b.amount || 0
-            ),
-          roundId: R.id,
-          crash: R.crash,
-          createdAt: Date.now()
-        });
-      }
-    }
-  }
+p.pnl =  
+  r2(  
+    p.pnl -  
+    b.amt  
+  );  
 
-  // -------------------------------------------------------------
-  // SAVE COMPLETE ROUND
-  // -------------------------------------------------------------
+addLog(  
+  p,  
+  {  
+    crash: R.crash,  
+    amt: b.amt,  
+    at: 0,  
+    profit:  
+      -b.amt  
+  }  
+);  
 
-  db.history.unshift({
-    id: R.id,
-    crash: R.crash,
-    seed: R.seed,
-    nonce: R.nonce,
-    commit: R.commit,
+addTx(  
+  p,  
+  'loss',  
+  b.amt,  
+  'completed',  
+  {  
+    roundId: R.id,  
+    crash: R.crash  
+  }  
+);
 
-    generatedAt: Date.now(),
-
-    generation:
-      'server-cryptographic',
-
-    algorithm:
-      'SHA-256(seed:nonce)'
-  });
-
-  if (db.history.length > 30) {
-    db.history =
-      db.history.slice(0, 30);
-  }
-
-  save();
-
-  addLog(
-    'ROUND_COMPLETE',
-    {
-      roundId: R.id,
-      crash: R.crash,
-      nonce: R.nonce,
-      commit: R.commit
-    }
-  );
-
-  broadcast();
 }
 
-// ================================================================
-// SSE
-// ================================================================
+db.history.unshift({
+id: R.id,
+crash: R.crash,
+seed: R.seed,
+nonce: R.nonce,
+commit: R.commit
+});
 
-const conns =
-  new Set();
+db.history.length =
+Math.min(
+db.history.length,
+30
+);
 
-function snapshot() {
-  if (!R) {
-    return {
-      round: null,
-      history:
-        db.history
-          .slice(0, 15)
-          .map(h => h.crash)
-    };
-  }
-
-  const over =
-    R.phase === 'over';
-
-  return {
-    round: {
-      id: R.id,
-      phase: R.phase,
-
-      commit: R.commit,
-
-      countEnd:
-        R.countEnd,
-
-      flyStart:
-        R.flyStart,
-
-      crash:
-        over
-          ? R.crash
-          : null,
-
-      seed:
-        over
-          ? R.seed
-          : null
-    },
-
-    history:
-      db.history
-        .slice(0, 15)
-        .map(
-          h => h.crash
-        )
-  };
+save();
+broadcast();
 }
-
-function broadcast() {
-  const data =
-    JSON.stringify(
-      snapshot()
-    );
-
-  for (const res of conns) {
-    try {
-      res.write(
-        `data: ${data}\n\n`
-      );
-    } catch (_) {
-      conns.delete(res);
-    }
-  }
-}
-
-// ================================================================
-// GAME LOOP
-// ================================================================
 
 setInterval(() => {
-  if (!R) return;
 
-  const now =
-    Date.now();
+const now =
+Date.now();
 
-  if (
-    R.phase === 'count' &&
-    now >= R.countEnd
-  ) {
-    R.phase = 'fly';
-
-    R.flyStart =
-      now;
-
-    save();
-
-    broadcast();
-
-    return;
-  }
-
-  if (
-    R.phase === 'fly'
-  ) {
-    const m =
-      liveMultiplier();
-
-    // Auto cashouts
-    for (
-      const t of Object.keys(
-        R.bets
-      )
-    ) {
-      const b =
-        R.bets[t];
-
-      if (
-        !b ||
-        b.cashed ||
-        !b.auto
-      ) {
-        continue;
-      }
-
-      if (
-        m >= Number(b.auto)
-      ) {
-        cash(
-          t,
-          Number(b.auto)
-        );
-      }
-    }
-
-    // Crash
-    if (
-      m >= R.crash
-    ) {
-      endRound();
-    }
-
-    return;
-  }
-
-  if (
-    R.phase === 'over' &&
-    now >= R.overEnd
-  ) {
-    startRound();
-  }
-}, 50);
-
-// ================================================================
-// PLAYER ACTIONS
-// ================================================================
-
-async function playerAction(
-  action,
-  body
+if (
+R.phase === 'count' &&
+now >= R.countEnd
 ) {
-  const user =
-    tgUser(
-      body.initData ||
-      body.init_data ||
-      ''
-    );
 
-  if (!user) {
-    return out(
-      401,
-      {
-        ok: false,
-        error:
-          'Telegram verification failed'
-      }
-    );
-  }
+R.phase = 'fly';  
 
-  const p =
-    getPlayer(user);
+R.flyStart =  
+  R.countEnd;  
 
-  if (!p) {
-    return out(
-      400,
-      {
-        ok: false,
-        error:
-          'Player unavailable'
-      }
-    );
-  }
+broadcast();
 
-  const id =
-    String(p.id);
-
-  // -------------------------------------------------------------
-  // BET
-  // -------------------------------------------------------------
-
-  if (action === 'bet') {
-    if (!R) {
-      return out(
-        503,
-        {
-          ok: false,
-          error:
-            'Game unavailable'
-        }
-      );
-    }
-
-    if (
-      R.phase !== 'count'
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'Betting is closed'
-        }
-      );
-    }
-
-    if (
-      Number(p.bet) > 0
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'Bet already placed'
-        }
-      );
-    }
-
-    const amount =
-      Number(body.amount);
-
-    if (
-      !Number.isFinite(amount) ||
-      amount < MIN ||
-      amount > MAX
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            `Bet must be between ₦${MIN} and ₦${MAX}`
-        }
-      );
-    }
-
-    if (
-      Number(p.balance) <
-      amount
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'Insufficient balance'
-        }
-      );
-    }
-
-    const auto =
-      Number(body.auto || 0);
-
-    p.balance =
-      Number(p.balance) -
-      amount;
-
-    p.bet = amount;
-
-    p.at = Date.now();
-
-    p.bonusBet = false;
-
-    p.totalBets =
-      Number(
-        p.totalBets || 0
-      ) + 1;
-
-    p.totalWagered =
-      Number(
-        p.totalWagered || 0
-      ) + amount;
-
-    R.bets[id] = {
-      amount,
-      auto:
-        auto >= 1.01
-          ? r2(auto)
-          : 0,
-      cashed: false,
-      placedAt: Date.now()
-    };
-
-    save();
-
-    addLog(
-      'BET',
-      {
-        playerId: id,
-        roundId: R.id,
-        amount
-      }
-    );
-
-    broadcast();
-
-    return out(
-      200,
-      {
-        ok: true,
-        balance:
-          p.balance,
-        bet:
-          p.bet,
-        roundId:
-          R.id
-      }
-    );
-  }
-
-  // -------------------------------------------------------------
-  // CANCEL
-  // -------------------------------------------------------------
-
-  if (action === 'cancel') {
-    if (!R) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'No round'
-        }
-      );
-    }
-
-    if (
-      R.phase !== 'count'
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'Cannot cancel now'
-        }
-      );
-    }
-
-    const b =
-      R.bets[id];
-
-    if (!b) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'No active bet'
-        }
-      );
-    }
-
-    p.balance =
-      Number(p.balance || 0) +
-      Number(b.amount || 0);
-
-    p.bet = 0;
-    p.at = 0;
-    p.bonusBet = false;
-
-    delete R.bets[id];
-
-    save();
-
-    broadcast();
-
-    return out(
-      200,
-      {
-        ok: true,
-        balance:
-          p.balance
-      }
-    );
-  }
-
-  // -------------------------------------------------------------
-  // CASHOUT
-  // -------------------------------------------------------------
-
-  if (action === 'cashout') {
-    const m =
-      Number(
-        body.multiplier
-      );
-
-    const result =
-      cash(id, m);
-
-    return out(
-      result.ok ? 200 : 400,
-      result
-    );
-  }
-
-  // -------------------------------------------------------------
-  // RESTORE
-  // -------------------------------------------------------------
-
-  if (action === 'restore') {
-    return out(
-      200,
-      {
-        ok: true,
-        player: {
-          id: p.id,
-          username:
-            p.username,
-          firstName:
-            p.firstName,
-          balance:
-            Number(
-              p.balance || 0
-            ),
-          bonus:
-            Number(
-              p.bonus || 0
-            ),
-          bet:
-            Number(
-              p.bet || 0
-            ),
-          stats: {
-            totalBets:
-              Number(
-                p.totalBets || 0
-              ),
-            totalWins:
-              Number(
-                p.totalWins || 0
-              ),
-            totalLosses:
-              Number(
-                p.totalLosses || 0
-              ),
-            totalWagered:
-              Number(
-                p.totalWagered || 0
-              ),
-            totalWon:
-              Number(
-                p.totalWon || 0
-              ),
-            totalWithdrawn:
-              Number(
-                p.totalWithdrawn || 0
-              )
-          }
-        },
-        round:
-          snapshot().round
-      }
-    );
-  }
-
-  // -------------------------------------------------------------
-  // BONUS
-  // -------------------------------------------------------------
-
-  if (action === 'bonus') {
-    if (
-      Number(p.bonus || 0) <= 0
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'No bonus available'
-        }
-      );
-    }
-
-    const amount =
-      Number(p.bonus);
-
-    p.bonus = 0;
-
-    p.balance =
-      Number(p.balance || 0) +
-      amount;
-
-    save();
-
-    return out(
-      200,
-      {
-        ok: true,
-        balance:
-          p.balance,
-        bonus:
-          p.bonus
-      }
-    );
-  }
-
-  // -------------------------------------------------------------
-  // DEPOSIT INITIALIZE
-  // -------------------------------------------------------------
-
-  if (action === 'deposit') {
-    const amount =
-      Number(body.amount);
-
-    if (
-      !Number.isFinite(amount) ||
-      amount < MIN_DEPOSIT ||
-      amount > MAX_DEPOSIT
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            `Deposit must be between ₦${MIN_DEPOSIT} and ₦${MAX_DEPOSIT}`
-        }
-      );
-    }
-
-    if (!PAYSTACK_SECRET_KEY) {
-      return out(
-        503,
-        {
-          ok: false,
-          error:
-            'Payment system not configured'
-        }
-      );
-    }
-
-    const email =
-      String(
-        body.email ||
-        `${p.id}@telegram.local`
-      );
-
-    try {
-      const response =
-        await paystack(
-          '/transaction/initialize',
-          'POST',
-          {
-            email,
-            amount:
-              Math.round(
-                amount * 100
-              ),
-            callback_url:
-              PAYSTACK_CALLBACK_URL,
-            metadata: {
-              playerId:
-                String(p.id),
-              telegramId:
-                String(p.id)
-            }
-          }
-        );
-
-      if (
-        !response.data ||
-        !response.data.status
-      ) {
-        return out(
-          400,
-          {
-            ok: false,
-            error:
-              response.data &&
-              response.data.message
-                ? response.data.message
-                : 'Paystack initialization failed'
-          }
-        );
-      }
-
-      addTx({
-        id: txId('DEPINIT'),
-        type:
-          'deposit_initialization',
-        status:
-          'pending',
-        playerId:
-          String(p.id),
-        amount,
-        reference:
-          response.data.data
-            .reference,
-        createdAt:
-          Date.now()
-      });
-
-      return out(
-        200,
-        {
-          ok: true,
-          authorization_url:
-            response.data.data
-              .authorization_url,
-          reference:
-            response.data.data
-              .reference
-        }
-      );
-    } catch (e) {
-      return out(
-        500,
-        {
-          ok: false,
-          error:
-            e.message
-        }
-      );
-    }
-  }
-
-  // -------------------------------------------------------------
-  // RESOLVE BANK
-  // -------------------------------------------------------------
-
-  if (action === 'resolveBank') {
-    const accountNumber =
-      String(
-        body.account_number ||
-        ''
-      );
-
-    const bankCode =
-      String(
-        body.bank_code ||
-        ''
-      );
-
-    if (
-      !/^\d{10}$/.test(
-        accountNumber
-      )
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'Invalid account number'
-        }
-      );
-    }
-
-    if (!bankCode) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'Bank code required'
-        }
-      );
-    }
-
-    try {
-      const response =
-        await paystack(
-          '/bank/resolve',
-          'GET'
-        );
-
-      return out(
-        200,
-        {
-          ok: true,
-          data:
-            response.data
-        }
-      );
-    } catch (e) {
-      return out(
-        500,
-        {
-          ok: false,
-          error:
-            e.message
-        }
-      );
-    }
-  }
-
-  // -------------------------------------------------------------
-  // WITHDRAW
-  // -------------------------------------------------------------
-
-  if (action === 'withdraw') {
-    const amount =
-      Number(body.amount);
-
-    if (
-      !Number.isFinite(amount) ||
-      amount < MIN_WITHDRAWAL ||
-      amount > MAX_WITHDRAWAL
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            `Withdrawal must be between ₦${MIN_WITHDRAWAL} and ₦${MAX_WITHDRAWAL}`
-        }
-      );
-    }
-
-    if (
-      Number(p.balance || 0) <
-      amount
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'Insufficient balance'
-        }
-      );
-    }
-
-    const accountNumber =
-      String(
-        body.account_number ||
-        ''
-      );
-
-    const bankCode =
-      String(
-        body.bank_code ||
-        ''
-      );
-
-    const accountName =
-      String(
-        body.account_name ||
-        ''
-      );
-
-    if (
-      !/^\d{10}$/.test(
-        accountNumber
-      )
-    ) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'Invalid account number'
-        }
-      );
-    }
-
-    if (!bankCode) {
-      return out(
-        400,
-        {
-          ok: false,
-          error:
-            'Bank code required'
-        }
-      );
-    }
-
-    const withdrawal = {
-      id:
-        txId('WD'),
-      playerId:
-        String(p.id),
-      amount,
-      accountNumber,
-      bankCode,
-      accountName,
-      status:
-        REQUIRE_WITHDRAWAL_APPROVAL
-          ? 'pending'
-          : 'processing',
-      createdAt:
-        Date.now()
-    };
-
-    // Reserve funds
-    p.balance =
-      Number(p.balance || 0) -
-      amount;
-
-    db.withdrawals.unshift(
-      withdrawal
-    );
-
-    if (
-      db.withdrawals.length >
-      500
-    ) {
-      db.withdrawals =
-        db.withdrawals.slice(
-          0,
-          500
-        );
-    }
-
-    addTx({
-      id:
-        withdrawal.id,
-      type:
-        'withdrawal',
-      status:
-        withdrawal.status,
-      playerId:
-        String(p.id),
-      amount,
-      createdAt:
-        Date.now()
-    });
-
-    save();
-
-    addLog(
-      'WITHDRAWAL_CREATED',
-      {
-        id:
-          withdrawal.id,
-        playerId:
-          p.id,
-        amount
-      }
-    );
-
-    // -----------------------------------------------------------
-    // AUTO TRANSFER WHEN APPROVAL IS DISABLED
-    // -----------------------------------------------------------
-
-    if (
-      !REQUIRE_WITHDRAWAL_APPROVAL
-    ) {
-      try {
-        if (
-          !withdrawal.recipientCode
-        ) {
-          const recipient =
-            await paystack(
-              '/transferrecipient',
-              'POST',
-              {
-                type:
-                  'nuban',
-                name:
-                  accountName ||
-                  'Customer',
-                account_number:
-                  accountNumber,
-                bank_code:
-                  bankCode,
-                currency:
-                  'NGN'
-              }
-            );
-
-          if (
-            !recipient.data ||
-            !recipient.data.status
-          ) {
-            throw new Error(
-              recipient.data &&
-              recipient.data.message
-                ? recipient.data.message
-                : 'Recipient creation failed'
-            );
-          }
-
-          withdrawal.recipientCode =
-            recipient.data.data
-              .recipient_code;
-        }
-
-        const transfer =
-          await createWithdrawalTransfer(
-            withdrawal
-          );
-
-        if (
-          transfer.data &&
-          transfer.data.status
-        ) {
-          withdrawal.status =
-            'processing';
-
-          withdrawal.transfer =
-            transfer.data.data;
-
-          save();
-        } else {
-          throw new Error(
-            transfer.data &&
-            transfer.data.message
-              ? transfer.data.message
-              : 'Transfer failed'
-          );
-        }
-      } catch (e) {
-        // Refund failed transfer
-        p.balance =
-          Number(p.balance || 0) +
-          amount;
-
-        withdrawal.status =
-          'failed';
-
-        withdrawal.error =
-          e.message;
-
-        addTx({
-          id:
-            txId('REFUND'),
-          type:
-            'withdrawal_refund',
-          status:
-            'success',
-          playerId:
-            String(p.id),
-          amount,
-          withdrawalId:
-            withdrawal.id,
-          createdAt:
-            Date.now()
-        });
-
-        save();
-
-        addLog(
-          'WITHDRAWAL_REFUNDED',
-          {
-            id:
-              withdrawal.id,
-            error:
-              e.message
-          }
-        );
-      }
-    }
-
-    return out(
-      200,
-      {
-        ok: true,
-        withdrawal,
-        balance:
-          p.balance
-      }
-    );
-  }
-
-  return out(
-    404,
-    {
-      ok: false,
-      error:
-        'Unknown action'
-    }
-  );
 }
 
-// ================================================================
-// SERVER
-// ================================================================
-
-const server =
-  http.createServer(
-    async (req, res) => {
-
-      // -----------------------------------------------------------
-      // CORS
-      // -----------------------------------------------------------
-
-      if (
-        req.method === 'OPTIONS'
-      ) {
-        res.writeHead(204, {
-          'Access-Control-Allow-Origin':
-            '*',
-          'Access-Control-Allow-Methods':
-            'GET,POST,OPTIONS',
-          'Access-Control-Allow-Headers':
-            'Content-Type,Authorization'
-        });
-
-        return res.end();
-      }
-
-      const u =
-        new URL(
-          req.url,
-          `http://${req.headers.host}`
-        );
-
-      // -----------------------------------------------------------
-      // READ BODY
-      // -----------------------------------------------------------
-
-      let body = {};
-
-      if (
-        req.method === 'POST'
-      ) {
-        try {
-          const chunks = [];
-
-          for await (
-            const chunk of req
-          ) {
-            chunks.push(chunk);
-          }
-
-          const raw =
-            Buffer
-              .concat(chunks)
-              .toString();
-
-          body =
-            raw
-              ? JSON.parse(raw)
-              : {};
-        } catch (e) {
-          return json(
-            res,
-            400,
-            {
-              ok: false,
-              error:
-                'Invalid JSON'
-            }
-          );
-        }
-      }
-
-      // ===========================================================
-      // PAYSTACK WEBHOOK
-      // ===========================================================
-
-      if (
-        u.pathname ===
-          '/paystack/webhook' &&
-        req.method === 'POST'
-      ) {
-        try {
-          const signature =
-            req.headers[
-              'x-paystack-signature'
-            ];
-
-          const rawBody =
-            JSON.stringify(body);
-
-          if (
-            PAYSTACK_SECRET_KEY &&
-            signature
-          ) {
-            const expected =
-              crypto
-                .createHmac(
-                  'sha512',
-                  PAYSTACK_SECRET_KEY
-                )
-                .update(rawBody)
-                .digest('hex');
-
-            if (
-              expected !==
-              signature
-            ) {
-              return json(
-                res,
-                401,
-                {
-                  ok: false,
-                  error:
-                    'Invalid signature'
-                }
-              );
-            }
-          }
-
-          if (
-            body.event ===
-              'charge.success'
-          ) {
-            const data =
-              body.data || {};
-
-            const reference =
-              data.reference;
-
-            const metadata =
-              data.metadata || {};
-
-            const playerId =
-              metadata.playerId ||
-              metadata.telegramId;
-
-            const amount =
-              Number(
-                data.amount || 0
-              ) / 100;
-
-            if (
-              reference &&
-              playerId &&
-              amount > 0
-            ) {
-              creditVerifiedDeposit(
-                reference,
-                amount,
-                String(playerId),
-                {
-                  channel:
-                    'webhook'
-                }
-              );
-            }
-          }
-
-          return json(
-            res,
-            200,
-            {
-              ok: true
-            }
-          );
-        } catch (e) {
-          console.error(
-            'Webhook error:',
-            e
-          );
-
-          return json(
-            res,
-            500,
-            {
-              ok: false,
-              error:
-                e.message
-            }
-          );
-        }
-      }
-
-      // ===========================================================
-      // PAYSTACK CALLBACK
-      // ===========================================================
-
-      if (
-        u.pathname ===
-          '/paystack/callback' &&
-        req.method === 'GET'
-      ) {
-        const reference =
-          u.searchParams.get(
-            'reference'
-          );
-
-        if (!reference) {
-          res.writeHead(
-            400,
-            {
-              'Content-Type':
-                'text/plain'
-            }
-          );
-
-          return res.end(
-            'Missing reference'
-          );
-        }
-
-        try {
-          const response =
-            await paystack(
-              '/transaction/verify/' +
-                encodeURIComponent(
-                  reference
-                ),
-              'GET'
-            );
-
-          if (
-            response.data &&
-            response.data.status &&
-            response.data.data &&
-            response.data.data.status ===
-              'success'
-          ) {
-            const data =
-              response.data.data;
-
-            const metadata =
-              data.metadata || {};
-
-            const playerId =
-              metadata.playerId ||
-              metadata.telegramId;
-
-            const amount =
-              Number(
-                data.amount || 0
-              ) / 100;
-
-            if (
-              playerId &&
-              amount > 0
-            ) {
-              creditVerifiedDeposit(
-                reference,
-                amount,
-                String(playerId),
-                {
-                  channel:
-                    'callback'
-                }
-              );
-            }
-          }
-
-          res.writeHead(
-            200,
-            {
-              'Content-Type':
-                'text/html; charset=utf-8'
-            }
-          );
-
-          return res.end(`
-<!doctype html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Payment</title>
-</head>
-<body style="font-family:Arial;text-align:center;padding:40px">
-<h2>Payment processed</h2>
-<p>You can return to the game.</p>
-</body>
-</html>
-          `);
-        } catch (e) {
-          return json(
-            res,
-            500,
-            {
-              ok: false,
-              error:
-                e.message
-            }
-          );
-        }
-      }
-
-      // ===========================================================
-      // SSE EVENTS
-      // ===========================================================
-
-      if (
-        u.pathname === '/events' &&
-        req.method === 'GET'
-      ) {
-        res.writeHead(
-          200,
-          {
-            'Content-Type':
-              'text/event-stream',
-            'Cache-Control':
-              'no-cache, no-store, must-revalidate',
-            Connection:
-              'keep-alive',
-            'Access-Control-Allow-Origin':
-              '*'
-          }
-        );
-
-        res.write(
-          `data: ${JSON.stringify(
-            snapshot()
-          )}\n\n`
-        );
-
-        conns.add(res);
-
-        const ping =
-          setInterval(
-            () => {
-              try {
-                res.write(
-                  ': ping\n\n'
-                );
-              } catch (_) {}
-            },
-            15000
-          );
-
-        req.on(
-          'close',
-          () => {
-            clearInterval(
-              ping
-            );
-
-            conns.delete(
-              res
-            );
-          }
-        );
-
-        return;
-      }
-
-      // ===========================================================
-      // BANK LIST
-      // ===========================================================
-
-      if (
-        u.pathname ===
-          '/api/banks' &&
-        req.method === 'GET'
-      ) {
-        try {
-          const response =
-            await paystack(
-              '/bank?country=nigeria&perPage=100',
-              'GET'
-            );
-
-          return json(
-            res,
-            200,
-            response.data
-          );
-        } catch (e) {
-          return json(
-            res,
-            500,
-            {
-              ok: false,
-              error:
-                e.message
-            }
-          );
-        }
-      }
-
-      // ===========================================================
-      // PUBLIC TRANSACTIONS
-      // ===========================================================
-
-      if (
-        u.pathname ===
-          '/api/transactions' &&
-        req.method === 'GET'
-      ) {
-        return json(
-          res,
-          200,
-          {
-            ok: true,
-            transactions:
-              db.transactions
-                .slice(0, 100)
-          }
-        );
-      }
-
-      // ===========================================================
-      // PLAYER API
-      // ===========================================================
-
-      if (
-        u.pathname.startsWith(
-          '/api/'
-        ) &&
-        req.method === 'POST'
-      ) {
-        const action =
-          u.pathname
-            .slice(5)
-            .replace(
-              /^\/+/,
-              ''
-            );
-
-        const result =
-          await playerAction(
-            action,
-            body
-          );
-
-        return json(
-          res,
-          result.status,
-          result.data
-        );
-      }
-
-      // ===========================================================
-      // ADMIN PAGE
-      // ===========================================================
-
-      if (
-        u.pathname === '/admin' &&
-        req.method === 'GET'
-      ) {
-        const file =
-          path.join(
-            __dirname,
-            'admin.html'
-          );
-
-        if (
-          !fs.existsSync(file)
-        ) {
-          return json(
-            res,
-            404,
-            {
-              ok: false,
-              error:
-                'admin.html not found'
-            }
-          );
-        }
-
-        res.writeHead(
-          200,
-          {
-            'Content-Type':
-              'text/html; charset=utf-8',
-            'Cache-Control':
-              'no-store'
-          }
-        );
-
-        return res.end(
-          fs.readFileSync(
-            file
-          )
-        );
-      }
-
-      // ===========================================================
-      // ADMIN API
-      // ===========================================================
-
-      if (
-        u.pathname.startsWith(
-          '/admin/api/'
-        ) &&
-        req.method === 'POST'
-      ) {
-        const act =
-          u.pathname
-            .slice(
-              '/admin/api/'.length
-            )
-            .replace(
-              /^\/+/,
-              ''
-            );
-
-        const key =
-          body.key ||
-          body.adminKey ||
-          '';
-
-        if (
-          key !== ADMIN_KEY
-        ) {
-          return json(
-            res,
-            401,
-            {
-              ok: false,
-              error:
-                'Unauthorized'
-            }
-          );
-        }
-
-        // ---------------------------------------------------------
-        // ADMIN STATE
-        // ---------------------------------------------------------
-
-        if (
-          act === 'state'
-        ) {
-          const players =
-            Object.values(
-              db.players
-            );
-
-          return json(
-            res,
-            200,
-            {
-              ok: true,
-
-              online:
-                conns.size,
-
-              total:
-                players.length,
-
-              round: R
-                ? {
-                    id:
-                      R.id,
-
-                    phase:
-                      R.phase,
-
-                    bets:
-                      Object.keys(
-                        R.bets
-                      ).length,
-
-                    multiplier:
-                      r2(
-                        liveMultiplier()
-                      ),
-
-                    crash:
-                      R.phase ===
-                      'over'
-                        ? R.crash
-                        : null,
-
-                    commit:
-                      R.commit,
-
-                    nonce:
-                      R.nonce,
-
-                    generation:
-                      'server-cryptographic',
-
-                    startedAt:
-                      R.flyStart ||
-                      null,
-
-                    completedAt:
-                      R.phase ===
-                      'over'
-                        ? R.overEnd -
-                          OVER_MS
-                        : null
-                  }
-                : null,
-
-              paystack:
-                {
-                  configured:
-                    Boolean(
-                      PAYSTACK_SECRET_KEY
-                    ),
-
-                  minDeposit:
-                    MIN_DEPOSIT,
-
-                  maxDeposit:
-                    MAX_DEPOSIT,
-
-                  minWithdrawal:
-                    MIN_WITHDRAWAL,
-
-                  maxWithdrawal:
-                    MAX_WITHDRAWAL,
-
-                  approvalRequired:
-                    REQUIRE_WITHDRAWAL_APPROVAL
-                },
-
-              players:
-                players.map(
-                  p => ({
-                    id:
-                      p.id,
-                    username:
-                      p.username,
-                    firstName:
-                      p.firstName,
-                    balance:
-                      Number(
-                        p.balance ||
-                          0
-                      ),
-                    bonus:
-                      Number(
-                        p.bonus ||
-                          0
-                      ),
-                    bet:
-                      Number(
-                        p.bet ||
-                          0
-                      ),
-                    totalBets:
-                      Number(
-                        p.totalBets ||
-                          0
-                      ),
-                    totalWins:
-                      Number(
-                        p.totalWins ||
-                          0
-                      ),
-                    totalLosses:
-                      Number(
-                        p.totalLosses ||
-                          0
-                      ),
-                    totalWagered:
-                      Number(
-                        p.totalWagered ||
-                          0
-                      ),
-                    totalWon:
-                      Number(
-                        p.totalWon ||
-                          0
-                      ),
-                    totalWithdrawn:
-                      Number(
-                        p.totalWithdrawn ||
-                          0
-                      ),
-                    createdAt:
-                      p.createdAt
-                  })
-                )
-            }
-          );
-        }
-
-        // ---------------------------------------------------------
-        // LIVE CRASH
-        // ---------------------------------------------------------
-
-        if (
-          act === 'live-crash'
-        ) {
-          const latest =
-            db.history[0] ||
-            null;
-
-          let verification =
-            null;
-
-          if (
-            R &&
-            R.phase === 'over'
-          ) {
-            const derivedHash =
-              sha(
-                R.seed +
-                ':' +
-                R.nonce
-              );
-
-            const derivedCrash =
-              crashFrom(
-                derivedHash
-              );
-
-            verification = {
-              seed:
-                R.seed,
-
-              commit:
-                R.commit,
-
-              calculatedCommit:
-                sha(R.seed),
-
-              commitValid:
-                sha(R.seed) ===
-                R.commit,
-
-              derivedHash,
-
-              calculatedCrash:
-                derivedCrash,
-
-              recordedCrash:
-                R.crash,
-
-              crashMatches:
-                derivedCrash ===
-                R.crash
-            };
-          }
-
-          return json(
-            res,
-            200,
-            {
-              ok: true,
-
-              live: R
-                ? {
-                    roundId:
-                      R.id,
-
-                    phase:
-                      R.phase,
-
-                    multiplier:
-                      r2(
-                        liveMultiplier()
-                      ),
-
-                    crash:
-                      R.phase ===
-                      'over'
-                        ? R.crash
-                        : null,
-
-                    commit:
-                      R.commit,
-
-                    nonce:
-                      R.nonce,
-
-                    generation:
-                      'server-cryptographic',
-
-                    algorithm:
-                      'SHA-256(seed:nonce)',
-
-                    serverTime:
-                      Date.now(),
-
-                    verification
-                  }
-                : null,
-
-              lastCompleted:
-                latest
-                  ? {
-                      id:
-                        latest.id,
-
-                      crash:
-                        latest.crash,
-
-                      commit:
-                        latest.commit,
-
-                      nonce:
-                        latest.nonce,
-
-                      generatedAt:
-                        latest.generatedAt ||
-                        null,
-
-                      generation:
-                        latest.generation ||
-                        'server-cryptographic',
-
-                      algorithm:
-                        latest.algorithm ||
-                        'SHA-256(seed:nonce)'
-                    }
-                  : null,
-
-              history:
-                db.history
-                  .slice(0, 15)
-                  .map(
-                    h => ({
-                      id:
-                        h.id,
-
-                      crash:
-                        h.crash,
-
-                      commit:
-                        h.commit,
-
-                      nonce:
-                        h.nonce,
-
-                      generatedAt:
-                        h.generatedAt ||
-                        null,
-
-                      generation:
-                        h.generation ||
-                        'server-cryptographic',
-
-                      algorithm:
-                        h.algorithm ||
-                        'SHA-256(seed:nonce)'
-                    })
-                  )
-            }
-          );
-        }
-
-        // ---------------------------------------------------------
-        // FINANCIALS
-        // ---------------------------------------------------------
-
-        if (
-          act === 'financials'
-        ) {
-          return json(
-            res,
-            200,
-            {
-              ok: true,
-
-              transactions:
-                db.transactions
-                  .slice(0, 200),
-
-              withdrawals:
-                db.withdrawals
-                  .slice(0, 200)
-            }
-          );
-        }
-
-        // ---------------------------------------------------------
-        // TRANSACTIONS
-        // ---------------------------------------------------------
-
-        if (
-          act === 'transactions'
-        ) {
-          return json(
-            res,
-            200,
-            {
-              ok: true,
-
-              transactions:
-                db.transactions
-                  .slice(0, 200)
-            }
-          );
-        }
-
-        // ---------------------------------------------------------
-        // WITHDRAWALS
-        // ---------------------------------------------------------
-
-        if (
-          act === 'withdrawals'
-        ) {
-          return json(
-            res,
-            200,
-            {
-              ok: true,
-
-              withdrawals:
-                db.withdrawals
-                  .slice(0, 200)
-            }
-          );
-        }
-
-        // ---------------------------------------------------------
-        // APPROVE WITHDRAWAL
-        // Supports BOTH names
-        // ---------------------------------------------------------
-
-        if (
-          act ===
-            'approve-withdrawal' ||
-          act ===
-            'approveWithdrawal'
-        ) {
-          const id =
-            String(
-              body.id ||
-              body.withdrawalId ||
-              ''
-            );
-
-          const w =
-            db.withdrawals.find(
-              x =>
-                String(x.id) ===
-                id
-            );
-
-          if (!w) {
-            return json(
-              res,
-              404,
-              {
-                ok: false,
-                error:
-                  'Withdrawal not found'
-              }
-            );
-          }
-
-          if (
-            w.status !==
-            'pending'
-          ) {
-            return json(
-              res,
-              400,
-              {
-                ok: false,
-                error:
-                  'Withdrawal is not pending'
-              }
-            );
-          }
-
-          const p =
-            findPlayerById(
-              w.playerId
-            );
-
-          if (!p) {
-            return json(
-              res,
-              404,
-              {
-                ok: false,
-                error:
-                  'Player not found'
-              }
-            );
-          }
-
-          try {
-            let recipientCode =
-              w.recipientCode;
-
-            if (
-              !recipientCode
-            ) {
-              const recipient =
-                await paystack(
-                  '/transferrecipient',
-                  'POST',
-                  {
-                    type:
-                      'nuban',
-                    name:
-                      w.accountName ||
-                      'Customer',
-                    account_number:
-                      w.accountNumber,
-                    bank_code:
-                      w.bankCode,
-                    currency:
-                      'NGN'
-                  }
-                );
-
-              if (
-                !recipient.data ||
-                !recipient.data.status
-              ) {
-                throw new Error(
-                  recipient.data &&
-                  recipient.data.message
-                    ? recipient.data.message
-                    : 'Recipient creation failed'
-                );
-              }
-
-              recipientCode =
-                recipient.data
-                  .data
-                  .recipient_code;
-
-              w.recipientCode =
-                recipientCode;
-            }
-
-            const transfer =
-              await createWithdrawalTransfer(
-                {
-                  ...w,
-                  recipientCode
-                }
-              );
-
-            if (
-              !transfer.data ||
-              !transfer.data.status
-            ) {
-              throw new Error(
-                transfer.data &&
-                transfer.data.message
-                  ? transfer.data.message
-                  : 'Transfer failed'
-              );
-            }
-
-            w.status =
-              'processing';
-
-            w.transfer =
-              transfer.data.data;
-
-            p.totalWithdrawn =
-              Number(
-                p.totalWithdrawn ||
-                  0
-              ) +
-              Number(
-                w.amount || 0
-              );
-
-            addTx({
-              id:
-                txId('WDAPPROVE'),
-              type:
-                'withdrawal_approved',
-              status:
-                'processing',
-              playerId:
-                String(w.playerId),
-              amount:
-                Number(w.amount),
-              withdrawalId:
-                w.id,
-              createdAt:
-                Date.now()
-            });
-
-            save();
-
-            addLog(
-              'WITHDRAWAL_APPROVED',
-              {
-                id:
-                  w.id,
-                playerId:
-                  w.playerId,
-                amount:
-                  w.amount
-              }
-            );
-
-            return json(
-              res,
-              200,
-              {
-                ok: true,
-                withdrawal:
-                  w
-              }
-            );
-          } catch (e) {
-            // Refund if transfer failed
-            p.balance =
-              Number(
-                p.balance || 0
-              ) +
-              Number(
-                w.amount || 0
-              );
-
-            w.status =
-              'failed';
-
-            w.error =
-              e.message;
-
-            addTx({
-              id:
-                txId('WDREFUND'),
-              type:
-                'withdrawal_refund',
-              status:
-                'success',
-              playerId:
-                String(
-                  w.playerId
-                ),
-              amount:
-                Number(
-                  w.amount
-                ),
-              withdrawalId:
-                w.id,
-              createdAt:
-                Date.now()
-            });
-
-            save();
-
-            return json(
-              res,
-              500,
-              {
-                ok: false,
-                error:
-                  e.message,
-                refunded:
-                  true
-              }
-            );
-          }
-        }
-
-        // ---------------------------------------------------------
-        // REJECT WITHDRAWAL
-        // Supports BOTH names
-        // ---------------------------------------------------------
-
-        if (
-          act ===
-            'reject-withdrawal' ||
-          act ===
-            'rejectWithdrawal'
-        ) {
-          const id =
-            String(
-              body.id ||
-              body.withdrawalId ||
-              ''
-            );
-
-          const w =
-            db.withdrawals.find(
-              x =>
-                String(x.id) ===
-                id
-            );
-
-          if (!w) {
-            return json(
-              res,
-              404,
-              {
-                ok: false,
-                error:
-                  'Withdrawal not found'
-              }
-            );
-          }
-
-          if (
-            w.status !==
-            'pending'
-          ) {
-            return json(
-              res,
-              400,
-              {
-                ok: false,
-                error:
-                  'Withdrawal is not pending'
-              }
-            );
-          }
-
-          const p =
-            findPlayerById(
-              w.playerId
-            );
-
-          if (!p) {
-            return json(
-              res,
-              404,
-              {
-                ok: false,
-                error:
-                  'Player not found'
-              }
-            );
-          }
-
-          // Return reserved money
-          p.balance =
-            Number(
-              p.balance || 0
-            ) +
-            Number(
-              w.amount || 0
-            );
-
-          w.status =
-            'rejected';
-
-          w.rejectedAt =
-            Date.now();
-
-          addTx({
-            id:
-              txId('WDREJECT'),
-            type:
-              'withdrawal_rejected',
-            status:
-              'success',
-            playerId:
-              String(
-                w.playerId
-              ),
-            amount:
-              Number(
-                w.amount
-              ),
-            withdrawalId:
-              w.id,
-            createdAt:
-              Date.now()
-          });
-
-          save();
-
-          addLog(
-            'WITHDRAWAL_REJECTED',
-            {
-              id:
-                w.id,
-              playerId:
-                w.playerId,
-              amount:
-                w.amount
-            }
-          );
-
-          return json(
-            res,
-            200,
-            {
-              ok: true,
-              withdrawal:
-                w,
-              balance:
-                p.balance
-            }
-          );
-        }
-
-        // ---------------------------------------------------------
-        // ADMIN RESTORE PLAYER
-        // ---------------------------------------------------------
-
-        if (
-          act === 'restore'
-        ) {
-          const id =
-            String(
-              body.playerId ||
-              body.id ||
-              ''
-            );
-
-          const p =
-            findPlayerById(id);
-
-          if (!p) {
-            return json(
-              res,
-              404,
-              {
-                ok: false,
-                error:
-                  'Player not found'
-              }
-            );
-          }
-
-          if (
-            Number(p.bet) > 0
-          ) {
-            p.balance =
-              Number(
-                p.balance || 0
-              ) +
-              Number(
-                p.bet || 0
-              );
-
-            p.bet = 0;
-            p.at = 0;
-            p.bonusBet =
-              false;
-
-            save();
-          }
-
-          return json(
-            res,
-            200,
-            {
-              ok: true,
-              player:
-                p
-            }
-          );
-        }
-
-        // ---------------------------------------------------------
-        // UNKNOWN ADMIN ACTION
-        // ---------------------------------------------------------
-
-        return json(
-          res,
-          404,
-          {
-            ok: false,
-            error:
-              'Unknown admin action'
-          }
-        );
-      }
-
-      // ===========================================================
-      // PUBLIC HISTORY
-      // ===========================================================
-
-      if (
-        u.pathname ===
-          '/api/history' &&
-        req.method === 'GET'
-      ) {
-        return json(
-          res,
-          200,
-          {
-            ok: true,
-
-            history:
-              db.history
-                .slice(0, 30)
-                .map(
-                  h => ({
-                    id:
-                      h.id,
-
-                    crash:
-                      h.crash,
-
-                    commit:
-                      h.commit,
-
-                    nonce:
-                      h.nonce,
-
-                    seed:
-                      h.seed,
-
-                    generatedAt:
-                      h.generatedAt ||
-                      null,
-
-                    generation:
-                      h.generation ||
-                      'server-cryptographic',
-
-                    algorithm:
-                      h.algorithm ||
-                      'SHA-256(seed:nonce)'
-                  })
-                )
-          }
-        );
-      }
-
-      // ===========================================================
-      // STATIC INDEX
-      // ===========================================================
-
-      const file =
-        path.join(
-          __dirname,
-          'index.html'
-        );
-
-      if (
-        fs.existsSync(file)
-      ) {
-        res.writeHead(
-          200,
-          {
-            'Content-Type':
-              'text/html; charset=utf-8'
-          }
-        );
-
-        return res.end(
-          fs.readFileSync(
-            file
-          )
-        );
-      }
-
-      return json(
-        res,
-        404,
-        {
-          ok: false,
-          error:
-            'Not found'
-        }
-      );
-    }
-  );
-
-// ================================================================
-// START SERVER
-// ================================================================
-
-server.listen(
-  PORT,
-  () => {
-    console.log(
-      `Crash Game 222 running on port ${PORT}`
-    );
-
-    console.log(
-      `Admin: /admin`
-    );
-
-    console.log(
-      `Live crash API: /admin/api/live-crash`
-    );
-
-    startRound();
+if (
+R.phase === 'fly'
+) {
+
+const m =  
+  Math.exp(  
+    GROWTH *  
+    (now -  
+      R.flyStart) /  
+    1000  
+  );  
+
+for (  
+  const [t, b]  
+  of Object.entries(  
+    R.bets  
+  )  
+) {  
+
+  if (  
+    !b.at &&  
+    b.auto &&  
+    b.auto < R.crash &&  
+    m >= b.auto  
+  ) {  
+    cash(t, b.auto);  
+  }  
+}  
+
+if (  
+  m >= R.crash  
+) {  
+  endRound();  
+}
+
+} else if (
+R.phase === 'over' &&
+now >= R.overEnd
+) {
+
+startRound();
+
+}
+
+}, 50);
+
+// =====================================================
+// SERVER SNAPSHOT
+// =====================================================
+
+const conns =
+new Set();
+
+function snap(token) {
+
+const p =
+db.players[token];
+
+const b =
+R.bets[token];
+
+const over =
+R.phase === 'over';
+
+return {
+
+now: Date.now(),  
+
+round: {  
+  id: R.id,  
+  phase: R.phase,  
+  commit: R.commit,  
+  countEnd: R.countEnd,  
+  flyStart: R.flyStart,  
+  crash:  
+    over  
+      ? R.crash  
+      : null,  
+  seed:  
+    over  
+      ? R.seed  
+      : null  
+},  
+
+history:  
+  db.history  
+    .slice(0, 15)  
+    .map(  
+      h => h.crash  
+    ),  
+
+me:  
+  p && {  
+    name: p.name,  
+    bal: p.bal,  
+    pnl: p.pnl,  
+    st: p.st,  
+    log: p.log,  
+    bonus: !!p.bonus,  
+    bet:  
+      b  
+        ? {  
+            amt: b.amt,  
+            auto: b.auto,  
+            at: b.at  
+          }  
+        : null  
   }
+
+};
+}
+
+const send =
+c =>
+c.res.write(
+'data:' +
+JSON.stringify(
+snap(c.token)
+) +
+'\n\n'
+);
+
+function broadcast() {
+
+for (
+const c
+of conns
+) {
+send(c);
+}
+
+}
+
+setInterval(() => {
+
+for (
+const c
+of conns
+) {
+c.res.write(
+':\n\n'
+);
+}
+
+}, 15000);
+
+setInterval(
+broadcast,
+10000
+);
+
+// =====================================================
+// PLAYER
+// =====================================================
+
+const okToken =
+t =>
+typeof t === 'string' &&
+/^[a-f0-9]{16,64}$/.test(t);
+
+function player(
+token,
+name,
+tg
+) {
+
+if (!okToken(token))
+return null;
+
+let p =
+db.players[token];
+
+if (!p) {
+
+if (  
+  Object.keys(  
+    db.players  
+  ).length > 5000  
+) {  
+  return null;  
+}  
+
+p =  
+  db.players[token] =  
+  {  
+    name: 'Player',  
+    bal: START,  
+    pnl: 0,  
+
+    st: {  
+      r: 0,  
+      w: 0,  
+      best: 0,  
+      big: 0  
+    },  
+
+    log: [],  
+    bet: 0,  
+    bonus: false,  
+    first: Date.now(),  
+    tg: null,  
+    email: ''  
+  };
+
+}
+
+if (!p.id)
+p.id =
+sha(token)
+.slice(0, 8);
+
+if (!p.first)
+p.first =
+Date.now();
+
+if (!p.email)
+p.email = '';
+
+p.seen =
+Date.now();
+
+if (tg)
+p.tg = tg;
+
+if (name)
+p.name =
+String(name)
+.replace(
+/[<>&"']/g,
+''
+)
+.trim()
+.slice(
+0,
+20
+) ||
+'Player';
+
+save();
+
+return p;
+}
+
+const now = () =>
+Math.exp(
+GROWTH *
+(Date.now() -
+R.flyStart) /
+1000
+);
+
+// =====================================================
+// GAME + WALLET API
+// =====================================================
+
+const api = {
+
+bet(
+p,
+t,
+b
+) {
+
+const amt =  
+  Math.floor(  
+    Number(  
+      b.amt  
+    )  
+  );  
+
+const auto =  
+  Number(  
+    b.auto  
+  ) >= 1.01  
+    ? r2(  
+        Number(  
+          b.auto  
+        )  
+      )  
+    : 0;  
+
+if (  
+  R.phase !==  
+  'count'  
+)  
+  return 'Betting is closed for this round';  
+
+if (  
+  R.bets[t]  
+)  
+  return 'You already have a bet in this round';  
+
+if (  
+  !(  
+    amt >= MIN &&  
+    amt <= MAX  
+  )  
+)  
+  return (  
+    'Bet must be between ' +  
+    MIN +  
+    ' and ' +  
+    MAX  
+  );  
+
+if (  
+  amt > p.bal  
+)  
+  return 'Not enough balance';  
+
+p.bal =  
+  r2(  
+    p.bal -  
+    amt  
+  );  
+
+p.bet = amt;  
+
+R.bets[t] = {  
+  amt,  
+  auto,  
+  at: 0  
+};  
+
+addTx(  
+  p,  
+  'bet',  
+  amt,  
+  'completed',  
+  {  
+    roundId: R.id  
+  }  
+);
+
+},
+
+cancel(
+p,
+t
+) {
+
+const b =  
+  R.bets[t];  
+
+if (  
+  R.phase !==  
+  'count' ||  
+  !b  
+)  
+  return 'Nothing to cancel';  
+
+p.bal =  
+  r2(  
+    p.bal +  
+    b.amt  
+  );  
+
+p.bet = 0;  
+
+delete R.bets[t];  
+
+addTx(  
+  p,  
+  'refund',  
+  b.amt,  
+  'completed',  
+  {  
+    roundId: R.id,  
+    reason:  
+      'bet_cancelled'  
+  }  
+);
+
+},
+
+cashout(
+p,
+t
+) {
+
+const b =  
+  R.bets[t];  
+
+if (  
+  R.phase !==  
+  'fly' ||  
+  !b ||  
+  b.at  
+)  
+  return 'Nothing to cash out';  
+
+const m =  
+  Math.floor(  
+    now() * 100  
+  ) / 100;  
+
+if (  
+  m >= R.crash  
+)  
+  return 'Too late, it crashed';  
+
+cash(  
+  t,  
+  m  
+);
+
+},
+
+restore(
+p,
+t
+) {
+
+if (  
+  p.bal >= MIN ||  
+  R.bets[t]  
+)  
+  return 'You still have coins';  
+
+p.bal = START;  
+
+addTx(  
+  p,  
+  'test_credit',  
+  START,  
+  'completed',  
+  {  
+    reason:  
+      'legacy_restore'  
+  }  
+);
+
+},
+
+bonus(p) {
+
+if (p.bonus)  
+  return 'Already claimed';  
+
+p.bonus = true;  
+
+p.bal =  
+  r2(  
+    p.bal +  
+    BONUS  
+  );  
+
+addTx(  
+  p,  
+  'bonus',  
+  BONUS,  
+  'completed'  
+);
+
+},
+
+// ===================================================
+// DEPOSIT
+// ===================================================
+
+async deposit(
+p,
+t,
+b
+) {
+
+if (  
+  !PAYSTACK_SECRET_KEY  
+)  
+  return 'Paystack is not configured yet';  
+
+const amount =  
+  Math.floor(  
+    Number(  
+      b.amount  
+    )  
+  );  
+
+const email =  
+  String(  
+    b.email ||  
+    p.email ||  
+    ''  
+  )  
+    .trim()  
+    .toLowerCase();  
+
+if (  
+  !(  
+    amount >=  
+      MIN_DEPOSIT &&  
+    amount <=  
+      MAX_DEPOSIT  
+  )  
+) {  
+  return (  
+    'Deposit must be between ₦' +  
+    MIN_DEPOSIT +  
+    ' and ₦' +  
+    MAX_DEPOSIT  
+  );  
+}  
+
+if (  
+  !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(  
+    email  
+  )  
+) {  
+  return 'Enter a valid email address';  
+}  
+
+p.email =  
+  email;  
+
+const reference =  
+  'crash_' +  
+  Date.now().toString(36) +  
+  '_' +  
+  crypto  
+    .randomBytes(5)  
+    .toString('hex');  
+
+addTx(  
+  p,  
+  'deposit',  
+  amount,  
+  'pending',  
+  {  
+    reference,  
+    provider:  
+      'paystack',  
+    email  
+  }  
+);  
+
+const out =  
+  await paystack(  
+    'POST',  
+    '/transaction/initialize',  
+    {  
+      email,  
+      amount:  
+        String(  
+          Math.round(  
+            amount * 100  
+          )  
+        ),  
+      currency:  
+        'NGN',  
+      reference,  
+      callback_url:  
+        PAYSTACK_CALLBACK_URL ||  
+        undefined,  
+
+      metadata:  
+        JSON.stringify({  
+          player_id:  
+            p.id,  
+          token_hash:  
+            sha(t)  
+              .slice(  
+                0,  
+                16  
+              )  
+        })  
+    }  
+  );  
+
+save();  
+
+return {  
+  authorization_url:  
+    out.data  
+      .authorization_url,  
+
+  reference  
+};
+
+},
+
+// ===================================================
+// BANK ACCOUNT RESOLUTION
+// ===================================================
+
+async resolveBank(
+p,
+t,
+b
+) {
+
+const accountNumber =  
+  String(  
+    b.accountNumber ||  
+    ''  
+  ).replace(  
+    /\D/g,  
+    ''  
+  );  
+
+const bankCode =  
+  String(  
+    b.bankCode ||  
+    ''  
+  ).trim();  
+
+if (  
+  !/^\d{10}$/.test(  
+    accountNumber  
+  )  
+)  
+  return 'Enter a valid 10-digit account number';  
+
+if (!bankCode)  
+  return 'Select a bank';  
+
+const out =  
+  await paystack(  
+    'GET',  
+    '/bank/resolve?account_number=' +  
+      encodeURIComponent(  
+        accountNumber  
+      ) +  
+      '&bank_code=' +  
+      encodeURIComponent(  
+        bankCode  
+      )  
+  );  
+
+return {  
+
+  account_number:  
+    out.data  
+      .account_number,  
+
+  account_name:  
+    out.data  
+      .account_name,  
+
+  bank_code:  
+    bankCode  
+};
+
+},
+
+// ===================================================
+// WITHDRAWAL
+// ===================================================
+
+withdraw(
+p,
+t,
+b
+) {
+
+const amount =  
+  Math.floor(  
+    Number(  
+      b.amount  
+    )  
+  );  
+
+const accountNumber =  
+  String(  
+    b.accountNumber ||  
+    ''  
+  ).replace(  
+    /\D/g,  
+    ''  
+  );  
+
+const bankCode =  
+  String(  
+    b.bankCode ||  
+    ''  
+  ).trim();  
+
+const accountName =  
+  String(  
+    b.accountName ||  
+    ''  
+  ).trim();  
+
+if (  
+  !(  
+    amount >=  
+      MIN_WITHDRAWAL &&  
+    amount <=  
+      MAX_WITHDRAWAL  
+  )  
+) {  
+  return (  
+    'Withdrawal must be between ₦' +  
+    MIN_WITHDRAWAL +  
+    ' and ₦' +  
+    MAX_WITHDRAWAL  
+  );  
+}  
+
+if (  
+  R.bets[t]  
+)  
+  return 'Cash out your active bet first';  
+
+if (  
+  amount > p.bal  
+)  
+  return 'Not enough balance';  
+
+if (  
+  !/^\d{10}$/.test(  
+    accountNumber  
+  )  
+)  
+  return 'Enter a valid 10-digit account number';  
+
+if (  
+  !bankCode ||  
+  !accountName  
+)  
+  return 'Resolve your bank account first';  
+
+const reference =  
+  'wd_' +  
+  Date.now().toString(36) +  
+  '_' +  
+  crypto  
+    .randomBytes(5)  
+    .toString('hex');  
+
+// Reserve balance immediately.  
+p.bal =  
+  r2(  
+    p.bal -  
+    amount  
+  );  
+
+const w = {  
+
+  id:  
+    txId(  
+      'withdrawal'  
+    ),  
+
+  reference,  
+
+  playerId:  
+    p.id,  
+
+  amount,  
+
+  currency:  
+    'NGN',  
+
+  accountNumber,  
+
+  bankCode,  
+
+  accountName,  
+
+  status:  
+    'pending',  
+
+  createdAt:  
+    Date.now(),  
+
+  updatedAt:  
+    Date.now()  
+};  
+
+db.withdrawals.unshift(w);  
+
+db.withdrawals.length =  
+  Math.min(  
+    db.withdrawals.length,  
+    1000  
+  );  
+
+addTx(  
+  p,  
+  'withdrawal',  
+  amount,  
+  'pending',  
+  {  
+    reference,  
+    withdrawalId:  
+      w.id  
+  }  
+);  
+
+save();  
+
+if (  
+  !REQUIRE_WITHDRAWAL_APPROVAL  
+) {  
+
+  setImmediate(  
+    async () => {  
+
+      try {  
+
+        await createWithdrawalTransfer(  
+          w  
+        );  
+
+      } catch (e) {  
+
+        w.status =  
+          'failed';  
+
+        w.error =  
+          e.message;  
+
+        p.bal =  
+          r2(  
+            p.bal +  
+            amount  
+          );  
+
+        const tx =  
+          db.transactions.find(  
+            x =>  
+              x.reference ===  
+              reference  
+          );  
+
+        if (tx)  
+          tx.status =  
+            'failed';  
+
+        addTx(  
+          p,  
+          'withdrawal_refund',  
+          amount,  
+          'completed',  
+          {  
+            reference,  
+            reason:  
+              e.message  
+          }  
+        );  
+
+        save();  
+        broadcast();  
+      }  
+
+    }  
+  );  
+}  
+
+return {  
+  id: w.id,  
+  reference,  
+  status: w.status  
+};
+
+}
+
+};
+
+// =====================================================
+// HTTP SERVER
+// =====================================================
+
+http.createServer(
+(req, res) => {
+
+const u =  
+  new URL(  
+    req.url,  
+    'http://x'  
+  );  
+
+
+// =================================================  
+// PAYSTACK WEBHOOK  
+// =================================================  
+
+if (  
+  req.method === 'POST' &&  
+  u.pathname ===  
+    '/paystack/webhook'  
+) {  
+
+  let raw = '';  
+
+  req.on(  
+    'data',  
+    x => {  
+
+      raw += x;  
+
+      if (  
+        raw.length >  
+        1000000  
+      ) {  
+
+        try {  
+          req.destroy();  
+        } catch (e) {}  
+
+      }  
+
+    }  
+  );  
+
+  req.on(  
+    'end',  
+    async () => {  
+
+      try {  
+
+        if (  
+          !PAYSTACK_SECRET_KEY  
+        )  
+          return res  
+            .writeHead(  
+              503  
+            )  
+            .end(  
+              'Paystack not configured'  
+            );  
+
+        const signature =  
+          String(  
+            req.headers[  
+              'x-paystack-signature'  
+            ] || ''  
+          );  
+
+        const expected =  
+          crypto  
+            .createHmac(  
+              'sha512',  
+              PAYSTACK_SECRET_KEY  
+            )  
+            .update(raw)  
+            .digest(  
+              'hex'  
+            );  
+
+        if (  
+          !signature ||  
+          signature.length !==  
+            expected.length ||  
+          !crypto.timingSafeEqual(  
+            Buffer.from(  
+              signature  
+            ),  
+            Buffer.from(  
+              expected  
+            )  
+          )  
+        ) {  
+
+          return res  
+            .writeHead(  
+              401  
+            )  
+            .end(  
+              'Invalid signature'  
+            );  
+
+        }  
+
+        let event;  
+
+        try {  
+          event =  
+            JSON.parse(  
+              raw ||  
+              '{}'  
+            );  
+        } catch (e) {  
+          event = {};  
+        }  
+
+
+        // DEPOSIT  
+        if (  
+          event.event ===  
+            'charge.success' &&  
+          event.data &&  
+          event.data.reference  
+        ) {  
+
+          try {  
+
+            await creditVerifiedDeposit(  
+              event.data.reference  
+            );  
+
+          } catch (e) {  
+
+            console.error(  
+              'Deposit webhook:',  
+              e.message  
+            );  
+
+          }  
+
+        }  
+
+
+        // WITHDRAWAL  
+        if (  
+          (  
+            event.event ===  
+              'transfer.success' ||  
+            event.event ===  
+              'transfer.failed' ||  
+            event.event ===  
+              'transfer.reversed'  
+          ) &&  
+          event.data &&  
+          event.data.reference  
+        ) {  
+
+          const w =  
+            db.withdrawals.find(  
+              x =>  
+                x.reference ===  
+                event.data.reference  
+            );  
+
+          if (w) {  
+
+            const p =  
+              findPlayerById(  
+                w.playerId  
+              );  
+
+            const tx =  
+              db.transactions.find(  
+                x =>  
+                  x.reference ===  
+                  w.reference  
+              );  
+
+            if (  
+              event.event ===  
+              'transfer.success'  
+            ) {  
+
+              w.status =  
+                'completed';  
+
+              if (tx)  
+                tx.status =  
+                  'completed';  
+
+            } else {  
+
+              if (  
+                w.status !==  
+                  'refunded' &&  
+                p  
+              ) {  
+
+                p.bal =  
+                  r2(  
+                    p.bal +  
+                    w.amount  
+                  );  
+
+                addTx(  
+                  p,  
+                  'withdrawal_refund',  
+                  w.amount,  
+                  'completed',  
+                  {  
+                    reference:  
+                      w.reference,  
+
+                    reason:  
+                      event.event  
+                  }  
+                );  
+              }  
+
+              w.status =  
+                'refunded';  
+
+              if (tx)  
+                tx.status =  
+                  'failed';  
+            }  
+
+            w.updatedAt =  
+              Date.now();  
+
+            save();  
+            broadcast();  
+          }  
+        }  
+
+        res.writeHead(  
+          200,  
+          {  
+            'Content-Type':  
+              'text/plain'  
+          }  
+        );  
+
+        res.end('OK');  
+
+      } catch (e) {  
+
+        console.error(  
+          'Webhook error:',  
+          e  
+        );  
+
+        res  
+          .writeHead(  
+            500  
+          )  
+          .end(  
+            'Webhook error'  
+          );  
+      }  
+
+    }  
+  );  
+
+  return;  
+}  
+
+
+// =================================================  
+// PAYSTACK CALLBACK  
+// =================================================  
+
+if (  
+  u.pathname ===  
+  '/paystack/callback'  
+) {  
+
+  const reference =  
+    u.searchParams.get(  
+      'reference'  
+    ) || '';  
+
+  res.writeHead(  
+    200,  
+    {  
+      'Content-Type':  
+        'text/html; charset=utf-8'  
+    }  
+  );  
+
+  return res.end(  
+    '<!doctype html>' +  
+    '<html>' +  
+    '<head>' +  
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +  
+    '<title>Payment</title>' +  
+    '</head>' +  
+    '<body style="font-family:Arial;text-align:center;padding:40px">' +  
+    '<h2>Payment received</h2>' +  
+    '<p>Your payment is being verified. You can return to the game.</p>' +  
+    '<p>Reference: ' +  
+    String(  
+      reference  
+    ).replace(  
+      /[<>&"']/g,  
+      ''  
+    ) +  
+    '</p>' +  
+    '</body>' +  
+    '</html>'  
+  );  
+}  
+
+
+// =================================================  
+// SSE  
+// =================================================  
+
+if (  
+  u.pathname ===  
+  '/events'  
+) {  
+
+  const token =  
+    u.searchParams.get(  
+      'token'  
+    );  
+
+  if (  
+    !player(  
+      token,  
+      u.searchParams.get(  
+        'name'  
+      ),  
+      tgUser(  
+        u.searchParams.get(  
+          'tg'  
+        )  
+      )  
+    )  
+  ) {  
+
+    res.writeHead(  
+      400  
+    );  
+
+    return res.end();  
+  }  
+
+  res.writeHead(  
+    200,  
+    {  
+      'Content-Type':  
+        'text/event-stream',  
+
+      'Cache-Control':  
+        'no-cache',  
+
+      Connection:  
+        'keep-alive',  
+
+      'X-Accel-Buffering':  
+        'no'  
+    }  
+  );  
+
+  const c = {  
+    res,  
+    token  
+  };  
+
+  conns.add(c);  
+
+  res.on(  
+    'close',  
+    () => {  
+
+      conns.delete(c);  
+
+      const q =  
+        db.players[  
+          token  
+        ];  
+
+      if (q)  
+        q.seen =  
+          Date.now();  
+
+    }  
+  );  
+
+  return send(c);  
+}  
+
+
+// =================================================  
+// BANK LIST  
+// =================================================  
+
+if (  
+  req.method === 'GET' &&  
+  u.pathname ===  
+    '/api/banks'  
+) {  
+
+  paystack(  
+    'GET',  
+    '/bank?country=nigeria&currency=NGN&perPage=100'  
+  )  
+    .then(  
+      out => {  
+
+        res.writeHead(  
+          200,  
+          {  
+            'Content-Type':  
+              'application/json'  
+          }  
+        );  
+
+        res.end(  
+          JSON.stringify({  
+            ok: true,  
+            banks:  
+              out.data ||  
+              []  
+          })  
+        );  
+
+      }  
+    )  
+    .catch(  
+      e => {  
+
+        res.writeHead(  
+          500,  
+          {  
+            'Content-Type':  
+              'application/json'  
+          }  
+        );  
+
+        res.end(  
+          JSON.stringify({  
+            ok: false,  
+            error:  
+              e.message  
+          })  
+        );  
+
+      }  
+    );  
+
+  return;  
+}  
+
+
+// =================================================  
+// PLAYER TRANSACTIONS  
+// =================================================  
+
+if (  
+  req.method === 'GET' &&  
+  u.pathname ===  
+    '/api/transactions'  
+) {  
+
+  const token =  
+    u.searchParams.get(  
+      'token'  
+    );  
+
+  const p =  
+    okToken(token) &&  
+    db.players[token];  
+
+  if (!p) {  
+
+    res.writeHead(  
+      401,  
+      {  
+        'Content-Type':  
+          'application/json'  
+      }  
+    );  
+
+    return res.end(  
+      JSON.stringify({  
+        ok: false,  
+        error:  
+          'Unknown player'  
+      })  
+    );  
+  }  
+
+  const items =  
+    db.transactions  
+      .filter(  
+        t =>  
+          t.playerId ===  
+          p.id  
+      )  
+      .slice(  
+        0,  
+        50  
+      );  
+
+  res.writeHead(  
+    200,  
+    {  
+      'Content-Type':  
+        'application/json'  
+    }  
+  );  
+
+  return res.end(  
+    JSON.stringify({  
+      ok: true,  
+      transactions:  
+        items  
+    })  
+  );  
+}  
+
+
+// =================================================  
+// PLAYER API  
+// =================================================  
+
+if (  
+  req.method === 'POST' &&  
+  u.pathname.startsWith(  
+    '/api/'  
+  )  
+) {  
+
+  return jsonReq(  
+    req,  
+    10000  
+  )  
+    .then(  
+      async b => {  
+
+        const fn =  
+          api[  
+            u.pathname.slice(  
+              5  
+            )  
+          ];  
+
+        const p =  
+          okToken(  
+            b.token  
+          ) &&  
+          db.players[  
+            b.token  
+          ];  
+
+        if (  
+          !fn ||  
+          !p  
+        ) {  
+
+          res.writeHead(  
+            200,  
+            {  
+              'Content-Type':  
+                'application/json'  
+            }  
+          );  
+
+          return res.end(  
+            JSON.stringify({  
+              ok: false,  
+              error:  
+                'Unknown request'  
+            })  
+          );  
+        }  
+
+        let result;  
+
+        try {  
+
+          result =  
+            await fn(  
+              p,  
+              b.token,  
+              b  
+            );  
+
+        } catch (e) {  
+
+          result =  
+            e.message ||  
+            'Request failed';  
+        }  
+
+
+        if (  
+          result &&  
+          typeof result ===  
+            'object'  
+        ) {  
+
+          save();  
+          broadcast();  
+
+          res.writeHead(  
+            200,  
+            {  
+              'Content-Type':  
+                'application/json'  
+            }  
+          );  
+
+          return res.end(  
+            JSON.stringify({  
+              ok: true,  
+              ...result  
+            })  
+          );  
+        }  
+
+
+        if (!result) {  
+
+          save();  
+          broadcast();  
+
+          res.writeHead(  
+            200,  
+            {  
+              'Content-Type':  
+                'application/json'  
+            }  
+          );  
+
+          return res.end(  
+            JSON.stringify({  
+              ok: true  
+            })  
+          );  
+        }  
+
+
+        res.writeHead(  
+          200,  
+          {  
+            'Content-Type':  
+              'application/json'  
+          }  
+        );  
+
+        res.end(  
+          JSON.stringify({  
+            ok: false,  
+            error:  
+              result  
+          })  
+        );  
+
+      }  
+    )  
+    .catch(  
+      e => {  
+
+        res.writeHead(  
+          400,  
+          {  
+            'Content-Type':  
+              'application/json'  
+          }  
+        );  
+
+        res.end(  
+          JSON.stringify({  
+            ok: false,  
+            error:  
+              e.message ||  
+              'Bad request'  
+          })  
+        );  
+
+      }  
+    );  
+}  
+
+
+// =================================================  
+// ADMIN PAGE  
+// =================================================  
+
+if (  
+  u.pathname ===  
+  '/admin'  
+) {  
+
+  return fs.readFile(  
+    path.join(  
+      __dirname,  
+      'admin.html'  
+    ),  
+    (e, html) => {  
+
+      res.writeHead(  
+        e ? 500 : 200,  
+        {  
+          'Content-Type':  
+            'text/html; charset=utf-8'  
+        }  
+      );  
+
+      res.end(  
+        e  
+          ? 'admin.html missing'  
+          : html  
+      );  
+
+    }  
+  );  
+}  
+
+
+// =================================================  
+// ADMIN API  
+// =================================================  
+
+if (  
+  req.method === 'POST' &&  
+  u.pathname.startsWith(  
+    '/admin/api/'  
+  )  
+) {  
+
+  return jsonReq(  
+    req,  
+    20000  
+  )  
+    .then(  
+      async b => {  
+
+        const h =  
+          x =>  
+            crypto  
+              .createHash(  
+                'sha256'  
+              )  
+              .update(  
+                String(  
+                  x || ''  
+                )  
+              )  
+              .digest();  
+
+        const out =  
+          (  
+            code,  
+            o  
+          ) => {  
+
+            res.writeHead(  
+              code,  
+              {  
+                'Content-Type':  
+                  'application/json'  
+              }  
+            );  
+
+            res.end(  
+              JSON.stringify(o)  
+            );  
+          };  
+
+
+        const a =  
+          h(b.key);  
+
+        const k =  
+          h(ADMIN_KEY);  
+
+        if (  
+          a.length !==  
+            k.length ||  
+          !crypto.timingSafeEqual(  
+            a,  
+            k  
+          )  
+        ) {  
+
+          return out(  
+            401,  
+            {  
+              ok: false,  
+              error:  
+                'Wrong admin key'  
+            }  
+          );  
+        }  
+
+
+        const act =  
+          u.pathname.slice(  
+            11  
+          );  
+
+
+        // ADMIN STATE  
+        if (  
+          act ===  
+          'state'  
+        ) {  
+
+          const on =  
+            new Set(  
+              [  
+                ...conns  
+              ].map(  
+                c =>  
+                  c.token  
+              )  
+            );  
+
+          const players =  
+            Object.entries(  
+              db.players  
+            ).map(  
+              (  
+                [  
+                  t,  
+                  p  
+                ]  
+              ) => ({  
+
+                id: p.id,  
+                name: p.name,  
+                tg: p.tg,  
+                email:  
+                  p.email ||  
+                  '',  
+                bal: p.bal,  
+                pnl: p.pnl,  
+
+                rounds:  
+                  p.st.r,  
+
+                wins:  
+                  p.st.w,  
+
+                best:  
+                  p.st.best,  
+
+                bet:  
+                  R.bets[t]  
+                    ? {  
+                        amt:  
+                          R.bets[t]  
+                            .amt,  
+
+                        auto:  
+                          R.bets[t]  
+                            .auto,  
+
+                        at:  
+                          R.bets[t]  
+                            .at  
+                      }  
+                    : null,  
+
+                online:  
+                  on.has(t),  
+
+                first:  
+                  p.first,  
+
+                seen:  
+                  p.seen  
+              })  
+            );  
+
+
+          return out(  
+            200,  
+            {  
+              ok: true,  
+              online:  
+                on.size,  
+
+              total:  
+                players.length,  
+
+              round: {  
+                id:  
+                  R.id,  
+
+                phase:  
+                  R.phase,  
+
+                bets:  
+                  Object.keys(  
+                    R.bets  
+                  ).length  
+              },  
+
+              paystackConfigured:  
+                !!PAYSTACK_SECRET_KEY,  
+
+              requireWithdrawalApproval:  
+                REQUIRE_WITHDRAWAL_APPROVAL,  
+
+              players  
+            }  
+          );  
+        }  
+
+
+        // ADMIN TRANSACTIONS  
+        if (  
+          act ===  
+          'transactions'  
+        ) {  
+
+          return out(  
+            200,  
+            {  
+              ok: true,  
+              transactions:  
+                db.transactions  
+                  .slice(  
+                    0,  
+                    200  
+                  )  
+            }  
+          );  
+        }  
+
+
+        // ADMIN WITHDRAWALS  
+        if (  
+          act ===  
+          'withdrawals'  
+        ) {  
+
+          return out(  
+            200,  
+            {  
+              ok: true,  
+              withdrawals:  
+                db.withdrawals  
+                  .slice(  
+                    0,  
+                    200  
+                  )  
+            }  
+          );  
+        }  
+
+
+        // APPROVE WITHDRAWAL  
+        if (  
+          act ===  
+          'approve-withdrawal'  
+        ) {  
+
+          const w =  
+            db.withdrawals.find(  
+              x =>  
+                x.id ===  
+                b.id  
+            );  
+
+          if (!w)  
+            return out(  
+              404,  
+              {  
+                ok: false,  
+                error:  
+                  'Withdrawal not found'  
+              }  
+            );  
+
+          if (  
+            w.status !==  
+            'pending'  
+          )  
+            return out(  
+              400,  
+              {  
+                ok: false,  
+                error:  
+                  'Withdrawal is not pending'  
+              }  
+            );  
+
+
+          try {  
+
+            await createWithdrawalTransfer(  
+              w  
+            );  
+
+            return out(  
+              200,  
+              {  
+                ok: true,  
+                withdrawal:  
+                  w  
+              }  
+            );  
+
+          } catch (e) {  
+
+            const p =  
+              findPlayerById(  
+                w.playerId  
+              );  
+
+            if (  
+              p &&  
+              w.status !==  
+                'refunded'  
+            ) {  
+
+              p.bal =  
+                r2(  
+                  p.bal +  
+                  w.amount  
+                );  
+
+              addTx(  
+                p,  
+                'withdrawal_refund',  
+                w.amount,  
+                'completed',  
+                {  
+                  reference:  
+                    w.reference,  
+
+                  reason:  
+                    e.message  
+                }  
+              );  
+            }  
+
+            w.status =  
+              'refunded';  
+
+            w.error =  
+              e.message;  
+
+            w.updatedAt =  
+              Date.now();  
+
+            const tx =  
+              db.transactions.find(  
+                x =>  
+                  x.reference ===  
+                  w.reference  
+              );  
+
+            if (tx)  
+              tx.status =  
+                'failed';  
+
+            save();  
+            broadcast();  
+
+            return out(  
+              500,  
+              {  
+                ok: false,  
+                error:  
+                  e.message  
+              }  
+            );  
+          }  
+        }  
+
+
+        // REJECT WITHDRAWAL  
+        if (  
+          act ===  
+          'reject-withdrawal'  
+        ) {  
+
+          const w =  
+            db.withdrawals.find(  
+              x =>  
+                x.id ===  
+                b.id  
+            );  
+
+          if (!w)  
+            return out(  
+              404,  
+              {  
+                ok: false,  
+                error:  
+                  'Withdrawal not found'  
+              }  
+            );  
+
+          if (  
+            w.status !==  
+            'pending'  
+          )  
+            return out(  
+              400,  
+              {  
+                ok: false,  
+                error:  
+                  'Withdrawal is not pending'  
+              }  
+            );  
+
+          const p =  
+            findPlayerById(  
+              w.playerId  
+            );  
+
+          if (p) {  
+
+            p.bal =  
+              r2(  
+                p.bal +  
+                w.amount  
+              );  
+
+            addTx(  
+              p,  
+              'withdrawal_refund',  
+              w.amount,  
+              'completed',  
+              {  
+                reference:  
+                  w.reference,  
+
+                reason:  
+                  'admin_rejected'  
+              }  
+            );  
+          }  
+
+          w.status =  
+            'rejected';  
+
+          w.updatedAt =  
+            Date.now();  
+
+          const tx =  
+            db.transactions.find(  
+              x =>  
+                x.reference ===  
+                w.reference  
+            );  
+
+          if (tx)  
+            tx.status =  
+              'rejected';  
+
+          save();  
+          broadcast();  
+
+          return out(  
+            200,  
+            {  
+              ok: true  
+            }  
+          );  
+        }  
+
+
+        // LEGACY TEST CREDIT  
+        if (  
+          act ===  
+          'restore'  
+        ) {  
+
+          const p =  
+            Object.values(  
+              db.players  
+            ).find(  
+              x =>  
+                x.id ===  
+                b.id  
+            );  
+
+          if (!p)  
+            return out(  
+              404,  
+              {  
+                ok: false,  
+                error:  
+                  'Player not found'  
+              }  
+            );  
+
+          p.bal =  
+            Math.max(  
+              p.bal,  
+              START  
+            );  
+
+          addTx(  
+            p,  
+            'test_credit',  
+            START,  
+            'completed',  
+            {  
+              reason:  
+                'admin_restore'  
+            }  
+          );  
+
+          save();  
+          broadcast();  
+
+          return out(  
+            200,  
+            {  
+              ok: true  
+            }  
+          );  
+        }  
+
+
+        return out(  
+          404,  
+          {  
+            ok: false,  
+            error:  
+              'Unknown request'  
+          }  
+        );  
+
+      }  
+    )  
+    .catch(  
+      e => {  
+
+        res.writeHead(  
+          400,  
+          {  
+            'Content-Type':  
+              'application/json'  
+          }  
+        );  
+
+        res.end(  
+          JSON.stringify({  
+            ok: false,  
+            error:  
+              e.message ||  
+              'Bad request'  
+          })  
+        );  
+
+      }  
+    );  
+}  
+
+
+// =================================================  
+// HISTORY  
+// =================================================  
+
+if (  
+  u.pathname ===  
+  '/api/history'  
+) {  
+
+  res.writeHead(  
+    200,  
+    {  
+      'Content-Type':  
+        'application/json'  
+    }  
+  );  
+
+  return res.end(  
+    JSON.stringify(  
+      db.history  
+    )  
+  );  
+}  
+
+
+// =================================================  
+// INDEX  
+// =================================================  
+
+fs.readFile(  
+  path.join(  
+    __dirname,  
+    'index.html'  
+  ),  
+  (e, html) => {  
+
+    if (e) {  
+
+      res.writeHead(  
+        500  
+      );  
+
+      return res.end(  
+        'index.html missing'  
+      );  
+    }  
+
+    res.writeHead(  
+      200,  
+      {  
+        'Content-Type':  
+          'text/html; charset=utf-8'  
+      }  
+    );  
+
+    res.end(  
+      html  
+    );  
+
+  }  
+);
+
+}
+).listen(
+PORT,
+() =>
+console.log(
+'Live Crash running on port ' +
+PORT
+)
+);
+
+startRound();
+
+console.log(
+process.env.ADMIN_KEY
+? 'Admin panel: /admin (key from ADMIN_KEY)'
+: 'Admin panel: /admin   key: ' +
+ADMIN_KEY
+);
+
+console.log(
+PAYSTACK_SECRET_KEY
+? 'Paystack wallet: CONFIGURED'
+: 'Paystack wallet: NOT CONFIGURED — add PAYSTACK_SECRET_KEY in Render'
 );
